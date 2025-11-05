@@ -87,7 +87,7 @@ export default function Features() {
             Everything You Need for Perfect Travels
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            PocketGuide combines AI intelligence with local expertise to transform how you explore the world.
+            Roamlit combines AI intelligence with local expertise to transform how you explore the world.
           </p>
         </div>
 

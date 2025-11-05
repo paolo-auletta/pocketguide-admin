@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Globe, Zap } from 'lucide-react';
 import Features from './features';
+import Image from 'next/image';
+import mobileImage from '@/public/assets/mobile.svg';
 
 export default function Hero() {
   const scrollToSection = (sectionId: string) => {
@@ -38,7 +40,7 @@ export default function Hero() {
 
               {/* Description */}
               <p className="mb-10 text-lg text-muted-foreground md:text-xl leading-relaxed max-w-lg">
-                PocketGuide helps you discover hidden gems, find authentic local restaurants, and explore your surroundings in the perfect order—all with AI assistance at every step.
+                Roamlit helps you discover hidden gems, find authentic local restaurants, and explore your surroundings in the perfect order—all with AI assistance at every step.
               </p>
 
               {/* CTA Buttons */}
@@ -102,12 +104,20 @@ export default function Hero() {
                 {/* iPhone Frame */}
                 <div className="relative w-72 mx-auto">
                   {/* Outer frame */}
-                  <div className="rounded-[3rem] border-[12px] border-gray-900 bg-gray-900 shadow-2xl" style={{ aspectRatio: '9/19.5' }}>
+                  <div className="rounded-[3rem] border-[10px] border-gray-900 bg-gray-900 shadow-2xl" style={{ aspectRatio: '9/19.5' }}>
                     {/* Notch */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-35 h-8.5 bg-gray-900 rounded-b-2xl z-10" />
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-35 h-8 bg-gray-900 rounded-b-2xl z-10" />
                     
                     {/* Screen */}
                     <div className="relative w-full h-full rounded-[2.5rem] bg-white overflow-hidden flex items-center justify-center">
+                      <Image 
+                        src="/assets/mobile.svg"
+                        alt="Roamlit mobile app interface" 
+                        className="w-full h-full object-cover"
+                        width={48}
+                        height={48}
+                        priority
+                      />
                     </div>
                   </div>
                   

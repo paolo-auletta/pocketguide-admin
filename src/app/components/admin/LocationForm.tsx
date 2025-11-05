@@ -29,6 +29,10 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     name: '',
     is_draft: true,
     description: '',
+    priceLow: null as number | null,
+    priceHigh: null as number | null,
+    timeLow: null as number | null,
+    timeHigh: null as number | null,
     type: LOCATION_TYPES[0],
     images: [] as string[],
     embedded_links: [] as string[],
@@ -58,6 +62,10 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         name: (location.name as string) || '',
         is_draft: (location.is_draft as boolean) ?? true,
         description: (location.description as string) || '',
+        priceLow: (location.priceLow as number | null) || null,
+        priceHigh: (location.priceHigh as number | null) || null,
+        timeLow: (location.timeLow as number | null) || null,
+        timeHigh: (location.timeHigh as number | null) || null,
         type: (location.type as string) || LOCATION_TYPES[0],
         images: (location.images as string[]) || [],
         embedded_links: (location.embedded_links as string[]) || [],
@@ -320,6 +328,60 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
               }
               placeholder="Optional description"
             />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="priceLow">Price Low</Label>
+              <Input
+                id="priceLow"
+                type="number"
+                value={formData.priceLow ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, priceLow: e.target.value ? parseInt(e.target.value) : null })
+                }
+                placeholder="Optional minimum price"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="priceHigh">Price High</Label>
+              <Input
+                id="priceHigh"
+                type="number"
+                value={formData.priceHigh ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, priceHigh: e.target.value ? parseInt(e.target.value) : null })
+                }
+                placeholder="Optional maximum price"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="timeLow">Time Low (minutes)</Label>
+              <Input
+                id="timeLow"
+                type="number"
+                value={formData.timeLow ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, timeLow: e.target.value ? parseInt(e.target.value) : null })
+                }
+                placeholder="Optional minimum time"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="timeHigh">Time High (minutes)</Label>
+              <Input
+                id="timeHigh"
+                type="number"
+                value={formData.timeHigh ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, timeHigh: e.target.value ? parseInt(e.target.value) : null })
+                }
+                placeholder="Optional maximum time"
+              />
+            </div>
           </div>
 
           <div className="space-y-2">

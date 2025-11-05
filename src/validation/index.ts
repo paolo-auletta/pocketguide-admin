@@ -81,6 +81,10 @@ export const LocationCreate = z.object({
   is_draft: z.boolean().optional(), // default true
   name: nonEmpty,
   description: z.string().optional(),
+  priceLow: z.number().int().nullable().optional(),
+  priceHigh: z.number().int().nullable().optional(),
+  timeLow: z.number().int().nullable().optional(),
+  timeHigh: z.number().int().nullable().optional(),
   type: LocationTypeEnum,
   images: filePathArray.default([]).optional(),          // File paths in Supabase Storage
   embedded_links: urlArray.default([]).optional(),
@@ -97,6 +101,10 @@ export const LocationUpdate = atLeastOne({
   is_draft: z.boolean().optional(),
   name: nonEmpty.optional(),
   description: z.string().optional(),
+  priceLow: z.number().int().nullable().optional(),
+  priceHigh: z.number().int().nullable().optional(),
+  timeLow: z.number().int().nullable().optional(),
+  timeHigh: z.number().int().nullable().optional(),
   type: LocationTypeEnum.optional(),
   images: filePathArray.optional(),          // File paths in Supabase Storage
   embedded_links: urlArray.optional(),

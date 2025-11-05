@@ -105,7 +105,7 @@ export default function CTA() {
             </Form>
 
             <p className="mt-6 text-xs text-muted-foreground">
-              No spam, just updates about PocketGuide. Unsubscribe anytime.
+              No spam, just updates about Roamlit. Unsubscribe anytime.
             </p>
           </div>
         </div>

@@ -51,6 +51,10 @@ export const locations = pgTable("locations", {
   is_draft: boolean().notNull().default(true),
   name: text().notNull(),
   description: text(),
+  priceLow: integer(),
+  priceHigh: integer(),
+  timeLow: integer(),
+  timeHigh: integer(),
   type: locationType().notNull(),
   images: text().array(), // array of image URLs
   embedded_links: text().array(), // array of external links

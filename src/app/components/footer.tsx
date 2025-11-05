@@ -13,7 +13,7 @@ export default function Footer() {
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="border-foreground/10 flex flex-col items-center justify-between border-t pt-8 md:flex-row">
           <p className="text-foreground/60 mb-4 text-sm md:mb-0">
-            © 2025 PocketGuide. All rights reserved.
+            © 2025 Roamlit. All rights reserved.
           </p>
           <div className="flex flex-wrap justify-center gap-6">
             {legalLinks.map((text) => (

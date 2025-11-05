@@ -12,7 +12,7 @@ export default function Partners() {
             Apps and Services We Work With
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            PocketGuide integrates with the best travel and discovery platforms to bring you the most comprehensive travel planning experience.
+            Roamlit integrates with the best travel and discovery platforms to bring you the most comprehensive travel planning experience.
           </p>
         </div>
 
