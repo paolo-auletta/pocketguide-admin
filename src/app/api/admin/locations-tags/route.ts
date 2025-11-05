@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/db';
-import { locations_trips } from '@/db/schema';
+import { locations_tags } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
-import { LocationTripLinkCreate } from '@/validation';
+import { LocationTagLinkCreate } from '@/validation';
 import { requireAdmin, ApiResponse } from '@/lib/admin-auth';
 
 function isValidUUID(id: unknown): id is string {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
   try {
     const body = await req.json();
 
-    const validationResult = LocationTripLinkCreate.safeParse(body);
+    const validationResult = LocationTagLinkCreate.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
         {
@@ -29,27 +29,28 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       );
     }
 
-    const { trip, location } = validationResult.data;
+    const { tag, location } = validationResult.data;
 
     try {
       const result = await db
-        .insert(locations_trips)
+        .insert(locations_tags)
         .values({
-          trip,
+          tag,
           location,
         })
         .returning();
 
       if (!result[0]) {
         return NextResponse.json(
-          { error: 'Failed to create location trip' },
+          { error: 'Failed to create location tag' },
           { status: 500 }
         );
       }
 
       return NextResponse.json({ data: result[0] }, { status: 201 });
     } catch (dbError) {
-      // Handle unique constraint violation (trip-location pair already exists)
+      // Handle unique constraint violation (tag-location pair already exists)
+      // PostgreSQL error code 23505 = unique constraint violation
       const errorObj = dbError as Record<string, unknown>;
       const cause = errorObj?.cause as Record<string, unknown>;
       
@@ -62,18 +63,25 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
         cause?.message?.toString().includes('duplicate key') ||
         cause?.message?.toString().includes('unique constraint');
       
+      console.error('DB Error details:', { 
+        code: errorObj?.code, 
+        message: errorObj?.message,
+        causeCode: cause?.code,
+        causeMessage: cause?.message 
+      });
+      
       if (isUniqueConstraintError) {
         return NextResponse.json(
-          { error: 'This trip is already linked to this location' },
+          { error: 'This tag is already linked to this location' },
           { status: 409 }
         );
       }
       throw dbError;
     }
   } catch (error) {
-    console.error('Error creating location trip:', error);
+    console.error('Error creating location tag:', error);
     return NextResponse.json(
-      { error: 'Failed to create location trip' },
+      { error: 'Failed to create location tag' },
       { status: 500 }
     );
   }
@@ -87,13 +95,13 @@ export async function DELETE(req: NextRequest): Promise<NextResponse<ApiResponse
 
   try {
     const { searchParams } = new URL(req.url);
-    const trip = searchParams.get('trip');
+    const tag = searchParams.get('tag');
     const location = searchParams.get('location');
 
     // Validate UUID format for both parameters
-    if (!isValidUUID(trip)) {
+    if (!isValidUUID(tag)) {
       return NextResponse.json(
-        { error: 'Invalid request', details: 'Invalid or missing trip ID' },
+        { error: 'Invalid request', details: 'Invalid or missing tag ID' },
         { status: 400 }
       );
     }
@@ -108,36 +116,36 @@ export async function DELETE(req: NextRequest): Promise<NextResponse<ApiResponse
     // Verify the relationship exists before deletion
     const existing = await db
       .select()
-      .from(locations_trips)
+      .from(locations_tags)
       .where(
         and(
-          eq(locations_trips.trip, trip),
-          eq(locations_trips.location, location)
+          eq(locations_tags.tag, tag),
+          eq(locations_tags.location, location)
         )
       )
       .limit(1);
 
     if (!existing.length) {
       return NextResponse.json(
-        { error: 'Location trip relationship not found' },
+        { error: 'Location tag relationship not found' },
         { status: 404 }
       );
     }
 
     await db
-      .delete(locations_trips)
+      .delete(locations_tags)
       .where(
         and(
-          eq(locations_trips.trip, trip),
-          eq(locations_trips.location, location)
+          eq(locations_tags.tag, tag),
+          eq(locations_tags.location, location)
         )
       );
 
     return NextResponse.json({ data: { success: true } });
   } catch (error) {
-    console.error('Error deleting location trip:', error);
+    console.error('Error deleting location tag:', error);
     return NextResponse.json(
-      { error: 'Failed to delete location trip' },
+      { error: 'Failed to delete location tag' },
       { status: 500 }
     );
   }

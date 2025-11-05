@@ -17,7 +17,7 @@ import { Loader2, X } from 'lucide-react';
 interface TripFormProps {
   trip?: Record<string, unknown> | null;
   cities: Array<{ id: string; name: string }>;
-  profiles: Array<{ id: string; clerk_id: string }>;
+  profiles: Array<{ id: string; clerk_id: string; name?: string }>;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -38,10 +38,12 @@ export function TripForm({ trip, cities, profiles, onSuccess, onCancel }: TripFo
 
   useEffect(() => {
     if (trip) {
+      const owner = (trip.owner as string) || '';
+      const city = (trip.city as string) || '';
       setFormData({
         name: (trip.name as string) || '',
-        owner: (trip.owner as string) || '',
-        city: (trip.city as string) || '',
+        owner,
+        city,
         number_of_adults: (trip.number_of_adults as number) || 0,
         number_of_children: (trip.number_of_children as number) || 0,
         preferences: (trip.preferences as string[]) || [],
@@ -123,23 +125,27 @@ export function TripForm({ trip, cities, profiles, onSuccess, onCancel }: TripFo
 
           <div className="space-y-2">
             <Label htmlFor="owner">Owner (Profile) *</Label>
-            <Select value={formData.owner} onValueChange={(value: string) => setFormData({ ...formData, owner: value })}>
+            <Select key={`owner-${formData.owner}`} value={formData.owner || ''} onValueChange={(value: string) => setFormData({ ...formData, owner: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select owner" />
               </SelectTrigger>
               <SelectContent>
-                {profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {profile.clerk_id}
-                  </SelectItem>
-                ))}
+                {profiles.map((profile) => {
+                  const displayName = profile.name || profile.clerk_id;
+                  const clerkId = profile.clerk_id;
+                  return (
+                    <SelectItem key={profile.id} value={profile.id} title={clerkId}>
+                      {displayName}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="city">City *</Label>
-            <Select value={formData.city} onValueChange={(value: string) => setFormData({ ...formData, city: value })}>
+            <Select key={`city-${formData.city}`} value={formData.city || ''} onValueChange={(value: string) => setFormData({ ...formData, city: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a city" />
               </SelectTrigger>

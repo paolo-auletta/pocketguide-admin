@@ -1,104 +1,179 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import db from '@/db';
-import { profiles, cities } from '@/db/schema';
+import { cities } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { CityCreate, CityUpdate, CityCreateInput, CityUpdateInput } from '@/validation';
+import { requireAdmin, ApiResponse } from '@/lib/admin-auth';
 
-async function checkAdmin() {
-  const { userId } = await auth();
-  if (!userId) {
-    return { error: 'Unauthorized', status: 401 };
-  }
-
-  const userProfile = await db
-    .select()
-    .from(profiles)
-    .where(eq(profiles.clerk_id, userId))
-    .limit(1);
-
-  if (!userProfile.length || userProfile[0].role !== 'admin') {
-    return { error: 'Forbidden', status: 403 };
-  }
-
-  return null;
-}
-
-export async function POST(req: NextRequest) {
-  const adminError = await checkAdmin();
-  if (adminError) {
-    return NextResponse.json({ error: adminError.error }, { status: adminError.status });
+export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>> {
+  const adminCheck = await requireAdmin();
+  if (adminCheck.error) {
+    return adminCheck.response!;
   }
 
   try {
     const body = await req.json();
-    const { name, country, is_draft, center_latitude, center_longitude } = body;
-
+    
+    const validationResult = CityCreate.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid request',
+          details: validationResult.error.issues,
+        },
+        { status: 400 }
+      );
+    }
+    
+    const data: CityCreateInput = validationResult.data;
+    
     const result = await db
       .insert(cities)
       .values({
-        name,
-        country,
-        is_draft: is_draft ?? true,
-        center_latitude,
-        center_longitude,
+        name: data.name,
+        country: data.country,
+        is_draft: data.is_draft ?? true,
+        center_latitude: data.center_latitude,
+        center_longitude: data.center_longitude,
       })
       .returning();
 
-    return NextResponse.json(result[0], { status: 201 });
+    if (!result[0]) {
+      return NextResponse.json(
+        { error: 'Failed to create city' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ data: result[0] }, { status: 201 });
   } catch (error) {
     console.error('Error creating city:', error);
-    return NextResponse.json({ error: 'Failed to create city' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to create city' },
+      { status: 500 }
+    );
   }
 }
 
-export async function PUT(req: NextRequest) {
-  const adminError = await checkAdmin();
-  if (adminError) {
-    return NextResponse.json({ error: adminError.error }, { status: adminError.status });
+export async function PUT(req: NextRequest): Promise<NextResponse<ApiResponse>> {
+  const adminCheck = await requireAdmin();
+  if (adminCheck.error) {
+    return adminCheck.response!;
   }
 
   try {
     const body = await req.json();
-    const { id, name, country, is_draft, center_latitude, center_longitude } = body;
+
+    // Extract and validate ID
+    const id = body.id as unknown;
+    if (typeof id !== 'string' || !id.match(/^[0-9a-f-]{36}$/i)) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: 'Missing or invalid id' },
+        { status: 400 }
+      );
+    }
+
+    // Validate update data
+    const validationResult = CityUpdate.safeParse(body);
+    if (!validationResult.success) {
+      return NextResponse.json(
+        {
+          error: 'Invalid request',
+          details: validationResult.error.issues,
+        },
+        { status: 400 }
+      );
+    }
+
+    const updateData: CityUpdateInput = validationResult.data;
+
+    // Verify city exists
+    const existingCity = await db
+      .select()
+      .from(cities)
+      .where(eq(cities.id, id))
+      .limit(1);
+
+    if (!existingCity.length) {
+      return NextResponse.json(
+        { error: 'City not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update only provided fields
+    const updateValues: Record<string, unknown> = {};
+    if (updateData.name !== undefined) updateValues.name = updateData.name;
+    if (updateData.country !== undefined) updateValues.country = updateData.country;
+    if (updateData.is_draft !== undefined) updateValues.is_draft = updateData.is_draft;
+    if (updateData.center_latitude !== undefined) updateValues.center_latitude = updateData.center_latitude;
+    if (updateData.center_longitude !== undefined) updateValues.center_longitude = updateData.center_longitude;
+    
+    // Add modified_at timestamp
+    updateValues.modified_at = new Date();
 
     const result = await db
       .update(cities)
-      .set({
-        name,
-        country,
-        is_draft,
-        center_latitude,
-        center_longitude,
-      })
+      .set(updateValues)
       .where(eq(cities.id, id))
       .returning();
 
-    return NextResponse.json(result[0]);
+    if (!result[0]) {
+      return NextResponse.json(
+        { error: 'Failed to update city' },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ data: result[0] });
   } catch (error) {
     console.error('Error updating city:', error);
-    return NextResponse.json({ error: 'Failed to update city' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to update city' },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(req: NextRequest) {
-  const adminError = await checkAdmin();
-  if (adminError) {
-    return NextResponse.json({ error: adminError.error }, { status: adminError.status });
+export async function DELETE(req: NextRequest): Promise<NextResponse<ApiResponse>> {
+  const adminCheck = await requireAdmin();
+  if (adminCheck.error) {
+    return adminCheck.response!;
   }
 
   try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
-    if (!id) {
-      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    if (!id || typeof id !== 'string' || !id.match(/^[0-9a-f-]{36}$/i)) {
+      return NextResponse.json(
+        { error: 'Invalid request', details: 'Missing or invalid id' },
+        { status: 400 }
+      );
+    }
+
+    // Verify city exists before deletion
+    const existingCity = await db
+      .select()
+      .from(cities)
+      .where(eq(cities.id, id))
+      .limit(1);
+
+    if (!existingCity.length) {
+      return NextResponse.json(
+        { error: 'City not found' },
+        { status: 404 }
+      );
     }
 
     await db.delete(cities).where(eq(cities.id, id));
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ data: { success: true } });
   } catch (error) {
     console.error('Error deleting city:', error);
-    return NextResponse.json({ error: 'Failed to delete city' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to delete city' },
+      { status: 500 }
+    );
   }
 }

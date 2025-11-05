@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/db';
-import { trips } from '@/db/schema';
+import { tags } from '@/db/schema';
 import { eq } from 'drizzle-orm';
-import { TripCreate } from '@/validation';
+import { TagCreate } from '@/validation';
 import { z } from 'zod';
 import { requireAdmin, ApiResponse } from '@/lib/admin-auth';
 
@@ -11,7 +11,7 @@ function isValidUUID(id: unknown): id is string {
 }
 
 // Partial update schema for PUT requests
-const TripPartialUpdate = TripCreate.partial().extend({ 
+const TagPartialUpdate = TagCreate.partial().extend({ 
   id: z.string().uuid() 
 });
 
@@ -23,9 +23,8 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
 
   try {
     const body = await req.json();
-
-    // Validate request body with TripCreate schema
-    const validationResult = TripCreate.safeParse(body);
+    
+    const validationResult = TagCreate.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Invalid request', details: validationResult.error.issues },
@@ -33,39 +32,29 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       );
     }
 
-    const { name, owner, city, number_of_adults, number_of_children, preferences } = validationResult.data;
+    const { name, icon, type } = validationResult.data;
 
     const result = await db
-      .insert(trips)
+      .insert(tags)
       .values({
         name,
-        owner,
-        city,
-        number_of_adults: number_of_adults ?? null,
-        number_of_children: number_of_children ?? null,
-        preferences: preferences && preferences.length > 0 ? preferences : null,
+        icon,
+        type,
       })
       .returning();
 
     if (!result[0]) {
       return NextResponse.json(
-        { error: 'Failed to create trip' },
+        { error: 'Failed to create tag' },
         { status: 500 }
       );
     }
 
-    // Serialize dates to ISO strings
-    const serializedResult = {
-      ...result[0],
-      created_at: result[0].created_at instanceof Date ? result[0].created_at.toISOString() : result[0].created_at,
-      modified_at: result[0].modified_at instanceof Date ? result[0].modified_at.toISOString() : result[0].modified_at,
-    };
-
-    return NextResponse.json({ data: serializedResult }, { status: 201 });
+    return NextResponse.json({ data: result[0] }, { status: 201 });
   } catch (error) {
-    console.error('Error creating trip:', error);
+    console.error('Error creating tag:', error);
     return NextResponse.json(
-      { error: 'Failed to create trip' },
+      { error: 'Failed to create tag' },
       { status: 500 }
     );
   }
@@ -84,13 +73,13 @@ export async function PUT(req: NextRequest): Promise<NextResponse<ApiResponse>> 
     // Validate ID format
     if (!isValidUUID(id)) {
       return NextResponse.json(
-        { error: 'Invalid request', details: 'Invalid or missing trip ID' },
+        { error: 'Invalid request', details: 'Invalid or missing tag ID' },
         { status: 400 }
       );
     }
 
     // Validate update data using partial schema
-    const validationResult = TripPartialUpdate.safeParse({ id, ...updateData });
+    const validationResult = TagPartialUpdate.safeParse({ id, ...updateData });
     if (!validationResult.success) {
       return NextResponse.json(
         { error: 'Invalid request', details: validationResult.error.issues },
@@ -101,22 +90,19 @@ export async function PUT(req: NextRequest): Promise<NextResponse<ApiResponse>> 
     // Build update object with only provided fields
     const updateValues: Record<string, unknown> = {};
     if (updateData.name !== undefined) updateValues.name = updateData.name;
-    if (updateData.owner !== undefined) updateValues.owner = updateData.owner;
-    if (updateData.city !== undefined) updateValues.city = updateData.city;
-    if (updateData.number_of_adults !== undefined) updateValues.number_of_adults = updateData.number_of_adults ?? null;
-    if (updateData.number_of_children !== undefined) updateValues.number_of_children = updateData.number_of_children ?? null;
-    if (updateData.preferences !== undefined) updateValues.preferences = updateData.preferences && updateData.preferences.length > 0 ? updateData.preferences : null;
+    if (updateData.icon !== undefined) updateValues.icon = updateData.icon;
+    if (updateData.type !== undefined) updateValues.type = updateData.type;
 
-    // Update the trip using Drizzle ORM
+    // Update the tag using Drizzle ORM
     const result = await db
-      .update(trips)
+      .update(tags)
       .set(updateValues)
-      .where(eq(trips.id, id))
+      .where(eq(tags.id, id))
       .returning();
 
     if (!result.length) {
       return NextResponse.json(
-        { error: 'Trip not found' },
+        { error: 'Tag not found' },
         { status: 404 }
       );
     }
@@ -130,9 +116,9 @@ export async function PUT(req: NextRequest): Promise<NextResponse<ApiResponse>> 
 
     return NextResponse.json({ data: serializedResult });
   } catch (error) {
-    console.error('Error updating trip:', error);
+    console.error('Error updating tag:', error);
     return NextResponse.json(
-      { error: 'Failed to update trip' },
+      { error: 'Failed to update tag' },
       { status: 500 }
     );
   }
@@ -151,32 +137,32 @@ export async function DELETE(req: NextRequest): Promise<NextResponse<ApiResponse
     // Validate UUID format
     if (!isValidUUID(id)) {
       return NextResponse.json(
-        { error: 'Invalid request', details: 'Invalid or missing trip ID' },
+        { error: 'Invalid request', details: 'Invalid or missing tag ID' },
         { status: 400 }
       );
     }
 
-    // Verify the trip exists before deletion
+    // Verify the tag exists before deletion
     const existing = await db
       .select()
-      .from(trips)
-      .where(eq(trips.id, id))
+      .from(tags)
+      .where(eq(tags.id, id))
       .limit(1);
 
     if (!existing.length) {
       return NextResponse.json(
-        { error: 'Trip not found' },
+        { error: 'Tag not found' },
         { status: 404 }
       );
     }
 
-    await db.delete(trips).where(eq(trips.id, id));
+    await db.delete(tags).where(eq(tags.id, id));
 
     return NextResponse.json({ data: { success: true } });
   } catch (error) {
-    console.error('Error deleting trip:', error);
+    console.error('Error deleting tag:', error);
     return NextResponse.json(
-      { error: 'Failed to delete trip' },
+      { error: 'Failed to delete tag' },
       { status: 500 }
     );
   }
