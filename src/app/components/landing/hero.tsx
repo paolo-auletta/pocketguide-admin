@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Globe, Zap } from 'lucide-react';
-import Features from './features';
 import Image from 'next/image';
 import { MovingBorderButton } from '@/components/ui/moving-border';
 import { StickyBanner } from '@/components/ui/sticky-banner';
@@ -142,10 +141,6 @@ export default function Hero() {
       </div>
 
       <World />  
-
-      <section id="features">
-        <Features />
-      </section>
 
     </div>
   );
