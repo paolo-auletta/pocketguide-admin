@@ -51,10 +51,12 @@ export const locations = pgTable("locations", {
   is_draft: boolean().notNull().default(true),
   name: text().notNull(),
   description: text(),
+
   priceLow: integer(),
   priceHigh: integer(),
   timeLow: integer(),
   timeHigh: integer(),
+
   type: locationType().notNull(),
   images: text().array(), // array of image URLs
   embedded_links: text().array(), // array of external links
@@ -143,3 +145,10 @@ export const locations_tags = pgTable(
     locIdx: index("locations_tags_location_idx").on(t.location),
   })
 );
+
+export const leads = pgTable("leads", {
+  id: uuid().defaultRandom().primaryKey(),
+  email: text().notNull(),
+  device: text().notNull(),
+  created_at: timestamp({ withTimezone: true }).defaultNow().notNull(),
+})

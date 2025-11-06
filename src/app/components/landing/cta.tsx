@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useActionState, useRef, useTransition } from "react";
+import { useRef, useTransition, useState } from "react";
 import * as z from "zod";
 import {
   Form,
@@ -15,15 +15,43 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { submitWaitlistForm } from "../waitlist/action";
-import { formSchema } from "../waitlist/schema";
+
+const formSchema = z.object({
+  email: z.string().email({
+    message: "Please enter a valid email address.",
+  }),
+});
 
 type FormValues = z.infer<typeof formSchema>;
 
+function getDeviceInfo(): string {
+  if (typeof window === 'undefined') return 'unknown';
+  
+  const ua = navigator.userAgent;
+  
+  // Detect OS
+  let os = 'Unknown';
+  if (ua.indexOf('Win') > -1) os = 'Windows';
+  else if (ua.indexOf('Mac') > -1) os = 'macOS';
+  else if (ua.indexOf('Linux') > -1) os = 'Linux';
+  else if (ua.indexOf('Android') > -1) os = 'Android';
+  else if (ua.indexOf('iPhone') > -1 || ua.indexOf('iPad') > -1) os = 'iOS';
+  
+  // Detect browser
+  let browser = 'Unknown';
+  if (ua.indexOf('Chrome') > -1 && ua.indexOf('Chromium') === -1) browser = 'Chrome';
+  else if (ua.indexOf('Safari') > -1 && ua.indexOf('Chrome') === -1) browser = 'Safari';
+  else if (ua.indexOf('Firefox') > -1) browser = 'Firefox';
+  else if (ua.indexOf('Edge') > -1) browser = 'Edge';
+  else if (ua.indexOf('Opera') > -1 || ua.indexOf('OPR') > -1) browser = 'Opera';
+  
+  return `${os} - ${browser}`;
+}
+
 export default function CTA() {
-    const [state, formAction] = useActionState(submitWaitlistForm, {
-      message: "",
-    });
+    const [message, setMessage] = useState("");
+    const [isPending, startTransition] = useTransition();
+    const formRef = useRef<HTMLFormElement>(null);
   
     const form = useForm<FormValues>({
       resolver: zodResolver(formSchema),
@@ -32,16 +60,38 @@ export default function CTA() {
       },
     });
   
-    const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
       event.preventDefault();
-      startTransition(() => {
-        formAction(new FormData(formRef.current!));
-        form.reset();
+      
+      const email = formRef.current?.email?.value;
+      if (!email) return;
+      
+      startTransition(async () => {
+        try {
+          const device = getDeviceInfo();
+          
+          const response = await fetch('/api/leads', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ email, device }),
+          });
+          
+          if (response.ok) {
+            setMessage("Successfully joined the waitlist!");
+            form.reset();
+          } else if (response.status === 409) {
+            setMessage("You are already registered to the waitlist");
+          } else {
+            setMessage("Failed to join. Please try again.");
+          }
+        } catch (error) {
+          console.error('Error submitting form:', error);
+          setMessage("An error occurred. Please try again.");
+        }
       });
     };
-  
-    const formRef = useRef<HTMLFormElement>(null);
-    const [isPending, startTransition] = useTransition();
 
   return (
     <section className="py-20">
@@ -68,13 +118,12 @@ export default function CTA() {
             <Form {...form}>
               <form
                 ref={formRef}
-                action={formAction}
                 onSubmit={onSubmit}
                 className="space-y-3 max-w-md mx-auto"
                 >
-                  {state.message && (
+                  {message && (
                     <div className="inline-block px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
-                      {state.message}
+                      {message}
                     </div>
                   )}
                 <FormField

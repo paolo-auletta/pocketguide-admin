@@ -2,7 +2,9 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, Sparkles, Globe, Zap } from 'lucide-react';
 import Features from './features';
 import Image from 'next/image';
-import mobileImage from '@/public/assets/mobile.svg';
+import { MovingBorderButton } from '@/components/ui/moving-border';
+import { StickyBanner } from '@/components/ui/sticky-banner';
+import { World } from './world';
 
 export default function Hero() {
   const scrollToSection = (sectionId: string) => {
@@ -13,14 +15,22 @@ export default function Hero() {
   };
 
   return (
-    <div className="relative z-10 overflow-hidden">
+    <div className="relative z-10 overflow-hidden flex flex-col gap-18">
+      <StickyBanner className="bg-gradient-to-b from-blue-500 to-blue-600 sm:flex hidden absolute">
+        <p className="mx-0 max-w-[90%] text-white drop-shadow-md">
+          Be the first to try Roamlit once it is realeased!{" "}
+          <a className="transition duration-200 hover:underline" onClick={() => scrollToSection('cta')}>
+            Join the waitlist
+          </a>
+        </p>
+      </StickyBanner>
       {/* Background decorative elements */}
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-blue-400/5 rounded-full blur-3xl" />
       </div>
 
-      <div className="pt-20 pb-16 md:pt-24 lg:pt-32">
+      <div className="pt-20 pb-16 md:pt-0 md:h-screen flex items-center">
         <div className="container mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
             {/* Left Content */}
@@ -45,21 +55,22 @@ export default function Hero() {
 
               {/* CTA Buttons */}
               <div className="mb-14 flex flex-col gap-4 sm:flex-row sm:items-center">
-                <Button 
-                  size="lg" 
-                  className="rounded-lg gap-2 group bg-gradient-to-r from-primary to-blue-600 hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 font-bold text-base"
+                <MovingBorderButton
+                  borderRadius="1.75rem"
+                  className="flex gap-2 px-4 py-2 group bg-gradient-to-r from-primary to-blue-400 border-white hover:shadow-xl hover:shadow-primary/40 transition-all duration-300 font-semibold text-base"
                   onClick={() => scrollToSection('cta')}
                 >
                   Join the Waitlist
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </Button>
-                <button 
+                </MovingBorderButton>
+                <Button 
                   onClick={() => scrollToSection('features')}
-                  className="text-sm font-bold text-primary hover:text-primary/80 flex items-center gap-2 transition-colors group"
+                  className="text-sm font-bold text-primary hover:text-primary/80 flex items-center gap-2 transition-colors group hover:bg-transparent"
+                  variant="ghost"
                 >
                   Learn more
                   <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-                </button>
+                </Button>
               </div>
 
               {/* Stats with Icons */}
@@ -130,9 +141,12 @@ export default function Hero() {
         </div>
       </div>
 
+      <World />  
+
       <section id="features">
         <Features />
       </section>
+
     </div>
   );
 }
