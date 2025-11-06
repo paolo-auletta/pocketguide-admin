@@ -1,6 +1,7 @@
 "use client";
 
 import { FeaturesShowcase } from "./landing/FeaturesShowcase";
+import { Zap, Rocket } from "lucide-react";
 
 /**
  * Demo page showing the FeaturesShowcase component in action
@@ -36,8 +37,10 @@ export function CustomFeaturesShowcase() {
       id: "custom-1",
       label: "Feature 1",
       icon: "/assets/Trip.svg",
+      lucideIcon: <Zap className="w-5 h-5" />,
       title: "Custom Feature 1",
       description: "Description for custom feature 1",
+      fullDescription: "This is a full description for custom feature 1 with more details about what this feature does.",
       screenContent: (
         <div className="flex items-center justify-center h-full bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900">
           <div className="text-center">
@@ -53,8 +56,10 @@ export function CustomFeaturesShowcase() {
       id: "custom-2",
       label: "Feature 2",
       icon: "/assets/Location.svg",
+      lucideIcon: <Rocket className="w-5 h-5" />,
       title: "Custom Feature 2",
       description: "Description for custom feature 2",
+      fullDescription: "This is a full description for custom feature 2 with more details about what this feature does.",
       screenContent: (
         <div className="flex items-center justify-center h-full bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900">
           <div className="text-center">
