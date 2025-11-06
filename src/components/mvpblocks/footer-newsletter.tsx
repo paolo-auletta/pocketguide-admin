@@ -137,7 +137,7 @@ export default function FooterNewsletter() {
           <p className="text-foreground/60 mb-4 text-sm md:mb-0">
             © 2023 Acme Inc. All rights reserved.
           </p>
-          <div className="flex flex-wrap justify-center gap-6">
+          {/* <div className="flex flex-wrap justify-center gap-6">
             {legalLinks.map((text) => (
               <a
                 key={text}
@@ -147,7 +147,7 @@ export default function FooterNewsletter() {
                 {text}
               </a>
             ))}
-          </div>
+          </div> */}
         </div>
       </div>
     </footer>
