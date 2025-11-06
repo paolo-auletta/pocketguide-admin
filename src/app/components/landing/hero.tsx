@@ -17,11 +17,8 @@ export default function Hero() {
     <div className="relative z-10 overflow-hidden flex flex-col gap-18">
       <StickyBanner className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-blue-500 to-blue-600">
         <p className="mx-0 max-w-[90%] text-white drop-shadow-md flex gap-1">
-          <a className="sm:block hidden">
+          <a className="md:block hidden">
             Be the first to try Roamlit once it is realeased!
-          </a>
-          <a className="sm:hidden block">
-            Be the first to try Roamlit!
           </a>
           <a className="transition duration-200 hover:underline" onClick={() => scrollToSection('cta')}>
             Join the waitlist
