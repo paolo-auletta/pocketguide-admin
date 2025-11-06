@@ -17,7 +17,7 @@ interface Feature {
   screenContent: React.ReactNode;
 }
 
-interface FeaturesShowcaseProps {
+interface AppShowcaseProps {
   features?: Feature[];
   autoRotate?: boolean;
   autoRotateInterval?: number;
@@ -87,12 +87,12 @@ const defaultFeatures: Feature[] = [
   },
 ];
 
-export function FeaturesShowcase({
+export function AppShowcase({
   features = defaultFeatures,
   autoRotate = true,
   autoRotateInterval = 6000,
   respectReducedMotion = true,
-}: FeaturesShowcaseProps) {
+}: AppShowcaseProps) {
   const [activeTabId, setActiveTabId] = useState(features[0].id);
   const [isAutoRotating, setIsAutoRotating] = useState(autoRotate);
   const autoRotateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -218,12 +218,40 @@ export function FeaturesShowcase({
         {/* Tabs Section */}
         <div className="flex flex-col gap-6">
           <div className="space-y-3">
-            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white">
-              Everything for Your Journey
-            </h2>
-            <p className="text-base text-gray-600 dark:text-gray-400">
+            <motion.h2 
+              className="mb-4 text-4xl font-bold md:text-5xl"
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+            >
+              Everything for Your{" "}
+              <span className="text-primary">
+                {"Journey".split(" ").map((word, idx) => (
+                  <span key={idx}>
+                    <motion.span
+                      className="inline-block"
+                      initial={{ x: -10, opacity: 0 }}
+                      whileInView={{ x: 0, opacity: 1 }}
+                      transition={{ duration: 0.5, delay: 0.1 + idx * 0.05 }}
+                      viewport={{ once: true }}
+                    >
+                      {word}
+                    </motion.span>
+                    {" "}
+                  </span>
+                ))}
+              </span>
+            </motion.h2>
+            <motion.p 
+              className="mx-auto max-w-2xl text-lg text-muted-foreground"
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              viewport={{ once: true }}
+            >
               Discover a complete travel companion that helps you plan, explore, and connect with fellow adventurers around the world.
-            </p>
+            </motion.p>
           </div>
 
           {/* Tab Buttons */}
@@ -232,14 +260,19 @@ export function FeaturesShowcase({
             role="tablist"
             aria-label="Feature tabs"
           >
-            {features.map((feature) => (
-              <button
+            {features.map((feature, idx) => (
+              <motion.button
                 key={feature.id}
                 onClick={() => handleTabClick(feature.id)}
                 role="tab"
                 aria-selected={activeTabId === feature.id}
                 aria-controls={`panel-${feature.id}`}
                 id={`tab-${feature.id}`}
+                initial={{ opacity: 0, x: -20 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.4, delay: idx * 0.1 }}
+                viewport={{ once: true }}
+                whileHover={{ scale: 1.02 }}
                 className={cn(
                   "flex items-center gap-4 p-4 rounded-lg transition-all duration-200 text-left",
                   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500",
@@ -248,9 +281,12 @@ export function FeaturesShowcase({
                     : "bg-gray-50 dark:bg-gray-900 border-2 border-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
                 )}
               >
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                <motion.div 
+                  className="flex-shrink-0 w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400"
+                  whileHover={{ rotate: 10 }}
+                >
                   {feature.lucideIcon}
-                </div>
+                </motion.div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 dark:text-white">
                     {feature.title}
@@ -259,7 +295,7 @@ export function FeaturesShowcase({
                     {feature.description}
                   </p>
                 </div>
-              </button>
+              </motion.button>
             ))}
           </div>
 
@@ -282,9 +318,15 @@ export function FeaturesShowcase({
         </div>
 
         {/* iPhone Mockup Section */}
-        <div className="flex justify-center lg:justify-end">
+        <motion.div 
+          className="flex justify-center lg:justify-end"
+          initial={{ opacity: 0, scale: 0.9 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          viewport={{ once: true }}
+        >
           <IPhoneMockup activeFeature={activeFeature} />
-        </div>
+        </motion.div>
       </div>
     </div>
   );
@@ -296,7 +338,11 @@ interface IPhoneMockupProps {
 
 function IPhoneMockup({ activeFeature }: IPhoneMockupProps) {
   return (
-    <div className="relative w-full max-w-xs">
+    <motion.div 
+      className="relative w-full max-w-xs"
+      animate={{ y: [0, -10, 0] }}
+      transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+    >
       {/* iPhone Frame */}
       <div className="relative aspect-[9/19.5] bg-black rounded-[3rem] shadow-2xl overflow-hidden border-[12px] border-black">
         {/* Screen Notch */}
@@ -324,16 +370,16 @@ function IPhoneMockup({ activeFeature }: IPhoneMockupProps) {
 
       {/* Soft Shadow */}
       <div className="absolute inset-0 rounded-[3rem] shadow-[0_20px_60px_rgba(0,0,0,0.3)] pointer-events-none" />
-    </div>
+    </motion.div>
   );
 }
 
 // Example usage component
-export function FeaturesShowcaseExample() {
+export function AppShowcaseExample() {
   return (
     <div className="w-full py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-6xl mx-auto">
-        <FeaturesShowcase
+        <AppShowcase
           autoRotate={true}
           autoRotateInterval={6000}
           respectReducedMotion={true}

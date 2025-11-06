@@ -15,9 +15,14 @@ export default function Hero() {
 
   return (
     <div className="relative z-10 overflow-hidden flex flex-col gap-18">
-      <StickyBanner className="bg-gradient-to-b from-blue-500 to-blue-600 sm:flex hidden absolute">
-        <p className="mx-0 max-w-[90%] text-white drop-shadow-md">
-          Be the first to try Roamlit once it is realeased!{" "}
+      <StickyBanner className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-blue-500 to-blue-600">
+        <p className="mx-0 max-w-[90%] text-white drop-shadow-md flex gap-1">
+          <a className="sm:block hidden">
+            Be the first to try Roamlit once it is realeased!
+          </a>
+          <a className="sm:hidden block">
+            Be the first to try Roamlit!
+          </a>
           <a className="transition duration-200 hover:underline" onClick={() => scrollToSection('cta')}>
             Join the waitlist
           </a>
@@ -43,7 +48,7 @@ export default function Hero() {
               </div>
 
               {/* Heading */}
-              <h1 className="mb-6 text-5xl font-semibold leading-tight md:text-6xl lg:text-7xl tracking-tight">
+              <h1 className="mb-6 text-5xl font-bold  md:text-6xl lg:text-7xl tracking-tight">
                 Plan Your Perfect <span className="bg-gradient-to-r from-primary via-blue-400 to-blue-600 bg-clip-text text-transparent">Journey</span>
               </h1>
 

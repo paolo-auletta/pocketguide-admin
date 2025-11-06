@@ -7,6 +7,7 @@ import {
   Clock,
   LucideIcon,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 
 type FeatureItem = {
   icon: LucideIcon;
@@ -53,23 +54,33 @@ const features: FeatureItem[] = [
   },
 ];
 
-const FeatureCard = ({ feature }: { feature: FeatureItem }) => {
+const FeatureCard = ({ feature, index }: { feature: FeatureItem; index: number }) => {
   const Icon = feature.icon;
 
   return (
-    <div className="group relative rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/5 to-transparent p-6 transition-all hover:border-primary/30 hover:bg-primary/10">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5, delay: index * 0.1 }}
+      viewport={{ once: true, margin: "-100px" }}
+      className="group relative rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/5 to-transparent p-6 transition-all hover:border-primary/30 hover:bg-primary/10 hover:shadow-lg hover:shadow-primary/10"
+    >
       <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-primary/0 via-primary/0 to-primary/5 opacity-0 transition-opacity group-hover:opacity-100" />
       
       <div className="relative">
-        <div className="mb-4 inline-flex rounded-lg bg-primary/10 p-3">
+        <motion.div 
+          className="mb-4 inline-flex rounded-lg bg-primary/10 p-3"
+          whileHover={{ scale: 1.1, rotate: 5 }}
+          transition={{ type: "spring", stiffness: 400, damping: 10 }}
+        >
           <Icon className="h-6 w-6 text-primary" />
-        </div>
+        </motion.div>
         <h3 className="mb-2 text-lg font-semibold">{feature.title}</h3>
         <p className="text-sm text-muted-foreground leading-relaxed">
           {feature.description}
         </p>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
@@ -79,22 +90,56 @@ export default function Features() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-16 text-center">
-          <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2">
+          <motion.div 
+            className="mb-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-2"
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4 }}
+            viewport={{ once: true }}
+          >
             <Sparkles className="h-4 w-4 text-primary" />
             <span className="text-sm font-medium">Features</span>
-          </div>
-          <h2 className="mb-4 text-4xl font-bold md:text-5xl">
-            Everything You Need for Perfect Travels
-          </h2>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
+          </motion.div>
+          <motion.h2 
+            className="mb-4 text-4xl font-bold md:text-5xl"
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            viewport={{ once: true }}
+          >
+            Everything You Need for{" "}
+            <span className="text-primary">
+              {"Perfect Travels".split(" ").map((word, idx) => (
+                <span key={idx}>
+                  <motion.span
+                    className="inline-block"
+                    initial={{ x: -10, opacity: 0 }}
+                    whileInView={{ x: 0, opacity: 1 }}
+                    transition={{ duration: 0.5, delay: 0.2 + idx * 0.05 }}
+                    viewport={{ once: true }}
+                  >
+                    {word}
+                  </motion.span>
+                  {" "}
+                </span>
+              ))}
+            </span>
+          </motion.h2>
+          <motion.p 
+            className="mx-auto max-w-2xl text-lg text-muted-foreground"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.3 }}
+            viewport={{ once: true }}
+          >
             Roamlit combines AI intelligence with local expertise to transform how you explore the world.
-          </p>
+          </motion.p>
         </div>
 
         {/* Features Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {features.map((feature, index) => (
-            <FeatureCard key={index} feature={feature} />
+            <FeatureCard key={index} feature={feature} index={index} />
           ))}
         </div>
       </div>

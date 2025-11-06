@@ -51,14 +51,21 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
   const [error, setError] = useState<string | null>(null);
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [tempLocationId] = useState(() => {
+    // Generate a temporary UUID for uploads during creation
+    return location?.id || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  });
+  const [deletingImage, setDeletingImage] = useState(false);
 
   useEffect(() => {
     if (location && cities.length > 0) {
       const cityId = (location.city as string) || '';
       console.log('Setting form data - Location city:', cityId);
       console.log('Available cities:', cities.map(c => ({ id: c.id, name: c.name })));
+      console.log('City ID from location:', cityId);
       
-      setFormData({
+      setFormData(prev => ({
+        ...prev,
         name: (location.name as string) || '',
         is_draft: (location.is_draft as boolean) ?? true,
         description: (location.description as string) || '',
@@ -75,9 +82,10 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         is_guide_premium: (location.is_guide_premium as boolean) ?? false,
         longitude: (location.longitude as number) || 0,
         latitude: (location.latitude as number) || 0,
-      });
+      }));
     }
-  }, [location, cities]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.id, cities.length]);
 
   // Generate signed URLs for images when they change
   useEffect(() => {
@@ -116,7 +124,37 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     }
   };
 
-  const handleRemoveImage = (index: number) => {
+  const handleRemoveImage = async (index: number) => {
+    const imagePath = formData.images[index];
+    
+    // Show confirmation dialog
+    if (!confirm(`Are you sure you want to delete this image? This action cannot be undone.`)) {
+      return;
+    }
+
+    // Only delete from Supabase if it's an existing image (has a path, not a URL)
+    if (imagePath && !imagePath.startsWith('http') && location?.id) {
+      setDeletingImage(true);
+      try {
+        const response = await fetch('/api/admin/upload-delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagePath }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete image from storage');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete image');
+        setDeletingImage(false);
+        return;
+      } finally {
+        setDeletingImage(false);
+      }
+    }
+
+    // Remove from form data
     setFormData((prev) => ({
       ...prev,
       images: prev.images.filter((_, i) => i !== index),
@@ -164,8 +202,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || !location?.id) {
-      setError('Save the location first to upload images');
+    if (!files) {
       return;
     }
 
@@ -174,7 +211,8 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
 
     try {
       const formDataToSend = new FormData();
-      formDataToSend.append('locationId', location.id as string); // Use location ID for folder
+      // Use tempLocationId (either actual ID when editing, or temp ID when creating)
+      formDataToSend.append('locationId', tempLocationId as string);
       
       for (let i = 0; i < files.length; i++) {
         formDataToSend.append('files', files[i]);
@@ -193,8 +231,10 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
       const data = await response.json();
       const uploadedPaths = data.paths || [];
 
-      // Track uploaded images for cleanup if user cancels
-      setUploadedImages((prev) => [...prev, ...uploadedPaths]);
+      // Track uploaded images for cleanup if user cancels (only if creating, not editing)
+      if (!location?.id) {
+        setUploadedImages((prev) => [...prev, ...uploadedPaths]);
+      }
 
       // Generate signed URLs immediately for newly uploaded images
       console.log('Generating signed URLs for newly uploaded paths:', uploadedPaths);
@@ -241,16 +281,56 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
 
       const method = location ? 'PUT' : 'POST';
       const url = '/api/admin/locations';
-      const body = location ? { id: location.id, ...formData } : formData;
+      const submitData = location ? { id: location.id, ...formData } : formData;
+
+      // If creating a new location with temp images, we'll need to move them after creation
+      const isCreating = !location;
+      const hasUploadedImages = uploadedImages.length > 0;
 
       const response = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(submitData),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save location');
+      }
+
+      const savedLocation = await response.json();
+      const savedLocationId = savedLocation.data?.id;
+
+      // If creating a new location with uploaded images, move them from temp folder to actual location ID folder
+      if (isCreating && hasUploadedImages && savedLocationId && (tempLocationId as string).startsWith('temp-')) {
+        try {
+          const moveResponse = await fetch('/api/admin/upload-move', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              fromLocationId: tempLocationId,
+              toLocationId: savedLocationId,
+              imagePaths: uploadedImages,
+            }),
+          });
+
+          if (moveResponse.ok) {
+            const moveData = await moveResponse.json();
+            // Update the location with the new image paths
+            if (moveData.data?.newPaths && moveData.data.newPaths.length > 0) {
+              await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  id: savedLocationId,
+                  images: moveData.data.newPaths,
+                }),
+              });
+            }
+          }
+        } catch (moveErr) {
+          console.error('Failed to move images:', moveErr);
+          // Don't fail the whole operation if image move fails
+        }
       }
 
       // Clear uploaded images tracking after successful save
@@ -288,7 +368,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
 
           <div className="space-y-2">
             <Label htmlFor="city">City *</Label>
-            <Select value={formData.city} onValueChange={(value) => setFormData({ ...formData, city: value })}>
+            <Select key={`city-${formData.city}`} value={formData.city || ''} onValueChange={(value) => setFormData({ ...formData, city: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select a city" />
               </SelectTrigger>
@@ -490,7 +570,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
                   multiple
                   accept="image/*"
                   onChange={handleImageUpload}
-                  disabled={uploading || !location?.id}
+                  disabled={uploading}
                   className="hidden"
                   id="file-upload"
                 />
@@ -499,7 +579,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
                     type="button"
                     variant="outline"
                     className="w-full cursor-pointer"
-                    disabled={uploading || !location?.id}
+                    disabled={uploading}
                     onClick={() => document.getElementById('file-upload')?.click()}
                   >
                     <Upload className="h-4 w-4 mr-2" />
@@ -528,10 +608,15 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
                       <button
                         type="button"
                         onClick={() => handleRemoveImage(idx)}
-                        className="text-white hover:text-red-400 transition-colors"
+                        disabled={deletingImage}
+                        className="text-white hover:text-red-400 transition-colors disabled:opacity-50"
                         title="Remove image"
                       >
-                        <X className="h-6 w-6" />
+                        {deletingImage ? (
+                          <Loader2 className="h-6 w-6 animate-spin" />
+                        ) : (
+                          <X className="h-6 w-6" />
+                        )}
                       </button>
                     </div>
                   </div>

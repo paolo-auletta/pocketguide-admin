@@ -113,6 +113,10 @@ export async function PUT(req: NextRequest): Promise<NextResponse<ApiResponse>> 
     if (updateData.name !== undefined) updateValues.name = updateData.name;
     if (updateData.is_draft !== undefined) updateValues.is_draft = updateData.is_draft;
     if (updateData.description !== undefined) updateValues.description = updateData.description;
+    if (updateData.priceLow !== undefined) updateValues.priceLow = updateData.priceLow;
+    if (updateData.priceHigh !== undefined) updateValues.priceHigh = updateData.priceHigh;
+    if (updateData.timeLow !== undefined) updateValues.timeLow = updateData.timeLow;
+    if (updateData.timeHigh !== undefined) updateValues.timeHigh = updateData.timeHigh;
     if (updateData.type !== undefined) updateValues.type = updateData.type;
     if (updateData.images !== undefined) updateValues.images = updateData.images && updateData.images.length > 0 ? updateData.images : null;
     if (updateData.embedded_links !== undefined) updateValues.embedded_links = updateData.embedded_links && updateData.embedded_links.length > 0 ? updateData.embedded_links : null;

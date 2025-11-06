@@ -92,6 +92,20 @@ export default function AdminPage() {
         url = `/api/admin/locations-tags?tag=${row.tag}&location=${row.location}`;
       }
 
+      // For locations, also delete the entire folder from Supabase
+      if (tableName === 'locations') {
+        try {
+          await fetch('/api/admin/upload-delete-folder', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ locationId: row.id }),
+          });
+        } catch (folderErr) {
+          console.error('Failed to delete location folder:', folderErr);
+          // Don't fail the whole operation if folder deletion fails
+        }
+      }
+
       const response = await fetch(url, { method: 'DELETE' });
       if (!response.ok) throw new Error('Failed to delete');
 
