@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import '@mapbox/mapbox-gl-geocoder/dist/mapbox-gl-geocoder.css';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -28,7 +27,6 @@ export function MapboxMap({
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<unknown | null>(null);
   const marker = useRef<unknown | null>(null);
-  const geocoder = useRef<unknown | null>(null);
   const mapboxglRef = useRef<unknown | null>(null);
   const [loading, setLoading] = useState(true);
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
@@ -87,8 +85,6 @@ export function MapboxMap({
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const mapboxgl = await import('mapbox-gl');
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const MapboxGeocoder = (await import('@mapbox/mapbox-gl-geocoder')).default;
 
         // Store mapboxgl reference for use in updateMarker
         mapboxglRef.current = mapboxgl.default;
@@ -114,33 +110,6 @@ export function MapboxMap({
         // Add navigation controls
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (map.current as any).addControl(new (mapboxgl.default as any).NavigationControl(), 'top-right');
-
-        // Initialize geocoder
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        geocoder.current = new MapboxGeocoder({
-          accessToken: mapboxToken,
-          mapboxgl: mapboxgl.default,
-          marker: false, // We'll manage our own marker
-          placeholder: 'Search for a location...',
-          proximity: initialCenter,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (map.current as any).addControl(geocoder.current, 'top-left');
-
-        // Handle geocoder result
-        if (geocoder.current) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (geocoder.current as any).on('result', (e: unknown) => {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const result = (e as any).result;
-            if (result && result.geometry && result.geometry.coordinates) {
-              const [lng, lat] = result.geometry.coordinates;
-              updateMarker(lat, lng, true); // Zoom to geocoder search result
-              onCoordinatesChange(lat, lng);
-            }
-          });
-        }
 
         // Add click handler to map
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

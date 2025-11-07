@@ -16,7 +16,6 @@
     "@clerk/express": "^1.7.43",
     "@clerk/nextjs": "^6.34.1",
     "@hookform/resolvers": "^5.2.2",
-    "@mapbox/mapbox-gl-geocoder": "^5.0.1",
     "@radix-ui/react-checkbox": "^1.1.1",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-select": "^2.1.2",
