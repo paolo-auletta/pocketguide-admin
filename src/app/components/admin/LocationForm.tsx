@@ -16,10 +16,12 @@ import {
 import { Loader2, X, Upload } from 'lucide-react';
 import { LOCATION_TYPES } from '@/constants/enums';
 import { getSignedImageUrl } from '@/lib/supabase-storage';
+import { MapboxMap } from './MapboxMap';
+import RichTextEditor from '@/components/admin/RichTextEditor';
 
 interface LocationFormProps {
   location?: Record<string, unknown> | null;
-  cities: Array<{ id: string; name: string }>;
+  cities: Array<{ id: string; name: string; center_latitude?: number; center_longitude?: number }>;
   onSuccess: () => void;
   onCancel: () => void;
 }
@@ -398,17 +400,34 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              value={formData.description}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              placeholder="Optional description"
-            />
-j          </div>
+          {/* Interactive Map */}
+          {formData.city && (
+            <div className="space-y-2">
+              <MapboxMap
+                latitude={formData.latitude}
+                longitude={formData.longitude}
+                onCoordinatesChange={(lat, lng) => {
+                  setFormData({ ...formData, latitude: lat, longitude: lng });
+                }}
+                cityCenter={
+                  cities.find((c) => c.id === formData.city)
+                    ? {
+                        latitude: cities.find((c) => c.id === formData.city)?.center_latitude || 0,
+                        longitude: cities.find((c) => c.id === formData.city)?.center_longitude || 0,
+                        name: cities.find((c) => c.id === formData.city)?.name || '',
+                      }
+                    : undefined
+                }
+              />
+            </div>
+          )}
+
+          <RichTextEditor
+            value={formData.description}
+            onChange={(value) => setFormData({ ...formData, description: value })}
+            label="Description"
+            placeholder="Start writing your description..."
+          />
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

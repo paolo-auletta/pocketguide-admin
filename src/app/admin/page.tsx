@@ -276,7 +276,12 @@ export default function AdminPage() {
           )}
           {creatingTable === 'locations' && tables && (
             <LocationForm
-              cities={tables.cities.data.map((c) => ({ id: c.id as string, name: c.name as string }))}
+              cities={tables.cities.data.map((c) => ({ 
+                id: c.id as string, 
+                name: c.name as string,
+                center_latitude: c.center_latitude as number,
+                center_longitude: c.center_longitude as number,
+              }))}
               onSuccess={handleFormSuccess}
               onCancel={() => setCreatingTable(null)}
             />
@@ -284,7 +289,12 @@ export default function AdminPage() {
           {editingRow?.table === 'locations' && tables && (
             <LocationForm
               location={editingRow.row}
-              cities={tables.cities.data.map((c) => ({ id: c.id as string, name: c.name as string }))}
+              cities={tables.cities.data.map((c) => ({ 
+                id: c.id as string, 
+                name: c.name as string,
+                center_latitude: c.center_latitude as number,
+                center_longitude: c.center_longitude as number,
+              }))}
               onSuccess={handleFormSuccess}
               onCancel={() => setEditingRow(null)}
             />
