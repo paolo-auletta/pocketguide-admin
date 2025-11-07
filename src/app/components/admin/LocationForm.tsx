@@ -17,7 +17,6 @@ import { Loader2, X, Upload } from 'lucide-react';
 import { LOCATION_TYPES } from '@/constants/enums';
 import { getSignedImageUrl } from '@/lib/supabase-storage';
 import { MapboxMap } from './MapboxMap';
-import RichTextEditor from '@/components/admin/RichTextEditor';
 
 interface LocationFormProps {
   location?: Record<string, unknown> | null;
@@ -422,12 +421,17 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
             </div>
           )}
 
-          <RichTextEditor
-            value={formData.description}
-            onChange={(value) => setFormData({ ...formData, description: value })}
-            label="Description"
-            placeholder="Start writing your description..."
-          />
+          <div className="space-y-2">
+            <Label htmlFor="description">Description</Label>
+            <Input
+              id="description"
+              value={formData.description}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+              placeholder="Optional description"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
