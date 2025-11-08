@@ -4,7 +4,7 @@ import {
 } from '@clerk/nextjs'
 import { Poppins } from 'next/font/google'
 import './globals.css'
-import UserSyncProvider from '@/components/UserSyncProvider'
+import UserSyncProvider from '@/hooks/UserSyncProvider'
 
 const poppins = Poppins({
   variable: '--font-poppins',

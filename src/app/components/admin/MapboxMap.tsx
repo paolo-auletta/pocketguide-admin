@@ -32,29 +32,35 @@ export function MapboxMap({
   const [mapboxToken, setMapboxToken] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const onChangeRef = useRef(onCoordinatesChange);
+  useEffect(() => {
+    onChangeRef.current = onCoordinatesChange;
+  }, [onCoordinatesChange]);
+
   // Update marker position - memoized to avoid recreation
   const updateMarker = useCallback((lat: number, lng: number, shouldCenter = false) => {
     if (!map.current || !mapboxglRef.current) return;
 
-    // Remove existing marker
-    if (marker.current && typeof marker.current === 'object' && 'remove' in marker.current) {
-      (marker.current as { remove: () => void }).remove();
+    // If marker exists, just move it; otherwise create it once
+    if (marker.current && typeof marker.current === 'object' && 'setLngLat' in marker.current) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (marker.current as any).setLngLat([lng, lat]);
+    } else {
+      // Create new marker element
+      const el = document.createElement('div');
+      el.className = 'w-8 h-8 bg-blue-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center';
+      el.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
+
+      // Create marker using the stored mapboxgl reference
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const MapboxMarker = (mapboxglRef.current as any).Marker;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const newMarker = new MapboxMarker({ element: el, draggable: false });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      marker.current = (newMarker as any).setLngLat([lng, lat]).addTo(map.current);
     }
 
-    // Create new marker element
-    const el = document.createElement('div');
-    el.className = 'w-8 h-8 bg-blue-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center';
-    el.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
-
-    // Create marker using the stored mapboxgl reference
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const MapboxMarker = (mapboxglRef.current as any).Marker;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newMarker = new MapboxMarker({ element: el, draggable: false });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    marker.current = (newMarker as any).setLngLat([lng, lat]).addTo(map.current);
-
-    // Only center/zoom when shouldCenter is true (e.g., from geocoder search or initial load)
+    // Only center/zoom when shouldCenter is true (e.g., from initial load)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if (shouldCenter && typeof map.current === 'object' && map.current !== null && 'flyTo' in map.current) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -117,7 +123,7 @@ export function MapboxMap({
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const { lng, lat } = (e as any).lngLat;
           updateMarker(lat, lng, false); // Don't zoom when clicking on map
-          onCoordinatesChange(lat, lng);
+          onChangeRef.current(lat, lng);
         });
 
         // Add initial marker if coordinates are set
@@ -141,7 +147,20 @@ export function MapboxMap({
         map.current = null;
       }
     };
-  }, [mapboxToken, cityCenter, updateMarker, latitude, longitude, onCoordinatesChange]);
+  }, [mapboxToken]);
+
+  useEffect(() => {
+    if (map.current && cityCenter) {
+      if (typeof map.current === 'object' && map.current !== null && 'flyTo' in map.current) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (map.current as any).flyTo({
+          center: [cityCenter.longitude, cityCenter.latitude],
+          zoom: 13,
+          duration: 600,
+        });
+      }
+    }
+  }, [cityCenter?.latitude, cityCenter?.longitude]);
 
   // Update marker when coordinates change from outside
   useEffect(() => {
