@@ -42,7 +42,9 @@ export function ForeignKeyCell({ id, tables }: ForeignKeyCellProps) {
       );
       if (record) {
         const rec = record as Record<string, unknown>;
-        displayName = (rec.name as string) || id;
+        displayName = tableName === 'profiles'
+          ? (rec.clerk_id as string) || id
+          : (rec.name as string) || id;
         foundTableName = tableName;
         break;
       }
@@ -57,7 +59,9 @@ export function ForeignKeyCell({ id, tables }: ForeignKeyCellProps) {
       );
       if (record) {
         const rec = record as Record<string, unknown>;
-        displayName = (rec.name as string) || id;
+        displayName = tableName === 'profiles'
+          ? (rec.clerk_id as string) || id
+          : (rec.name as string) || id;
         foundTableName = tableName;
         break;
       }

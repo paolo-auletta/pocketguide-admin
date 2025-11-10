@@ -302,7 +302,7 @@ export default function AdminPage() {
           {creatingTable === 'trips' && tables && (
             <TripForm
               cities={tables.cities.data.map((c) => ({ id: c.id as string, name: c.name as string }))}
-              profiles={tables.profiles.data.map((p) => ({ id: p.id as string, clerk_id: p.clerk_id as string, name: (p.name as string) || undefined }))}
+              profiles={tables.profiles.data.map((p) => ({ id: p.id as string, clerk_id: p.clerk_id as string }))}
               onSuccess={handleFormSuccess}
               onCancel={() => setCreatingTable(null)}
             />
@@ -311,7 +311,7 @@ export default function AdminPage() {
             <TripForm
               trip={editingRow.row}
               cities={tables.cities.data.map((c) => ({ id: c.id as string, name: c.name as string }))}
-              profiles={tables.profiles.data.map((p) => ({ id: p.id as string, clerk_id: p.clerk_id as string, name: (p.name as string) || undefined }))}
+              profiles={tables.profiles.data.map((p) => ({ id: p.id as string, clerk_id: p.clerk_id as string }))}
               onSuccess={handleFormSuccess}
               onCancel={() => setEditingRow(null)}
             />

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +17,8 @@ import { Loader2, X, Upload } from 'lucide-react';
 import { LOCATION_TYPES } from '@/constants/enums';
 import { getSignedImageUrl } from '@/lib/supabase-storage';
 import { MapboxMap } from './MapboxMap';
+import { EditorComponent, EditorHandle } from './EditorComponent';
+import { OutputData } from '@editorjs/editorjs';
 
 interface LocationFormProps {
   location?: Record<string, unknown> | null;
@@ -39,11 +41,12 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     embedded_links: [] as string[],
     city: '',
     street: '',
-    guide: '',
+    guide: null as OutputData | null,
     is_guide_premium: false,
     longitude: 0,
     latitude: 0,
   });
+  const editorRef = useRef<EditorHandle | null>(null);
 
   const [newImage, setNewImage] = useState('');
   const [newLink, setNewLink] = useState('');
@@ -79,7 +82,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         embedded_links: (location.embedded_links as string[]) || [],
         city: cityId,
         street: (location.street as string) || '',
-        guide: (location.guide as string) || '',
+        guide: (location.guide as OutputData) || null,
         is_guide_premium: (location.is_guide_premium as boolean) ?? false,
         longitude: (location.longitude as number) || 0,
         latitude: (location.latitude as number) || 0,
@@ -282,7 +285,23 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
 
       const method = location ? 'PUT' : 'POST';
       const url = '/api/admin/locations';
-      const submitData = location ? { id: location.id, ...formData } : formData;
+      // Ensure we capture the latest editor state at submit time
+      let latestGuide: OutputData | null = formData.guide;
+      try {
+        // @ts-expect-error access forwarded ref
+        const saved = await editorRef.current?.save();
+        if (saved) latestGuide = saved;
+      } catch (err) {
+        console.warn('Failed to save editor state at submit, using current formData.guide');
+      }
+
+      const submitData = location
+        ? { id: location.id, ...formData, guide: latestGuide }
+        : { ...formData, guide: latestGuide };
+
+      // Debug: Log what's being submitted
+      console.log('Submitting location data:', submitData);
+      console.log('Guide data:', formData.guide);
 
       // If creating a new location with temp images, we'll need to move them after creation
       const isCreating = !location;
@@ -531,13 +550,15 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
 
           <div className="space-y-2">
             <Label htmlFor="guide">Guide</Label>
-            <Input
-              id="guide"
-              value={formData.guide}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setFormData({ ...formData, guide: e.target.value })
-              }
-              placeholder="Guide information"
+            <EditorComponent
+              key={`guide-editor-${(location && (location.id as string)) || 'new'}`}
+              ref={editorRef}
+              data={formData.guide}
+              onChange={(data) => {
+                console.log('Editor onChange called with data:', data);
+                setFormData((prev) => ({ ...prev, guide: data }));
+              }}
+              placeholder="Start writing your guide..."
             />
           </div>
 

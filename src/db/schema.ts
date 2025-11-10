@@ -10,6 +10,7 @@ import {
   primaryKey,
   uniqueIndex,
   index,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import { PLAN_TYPES, BILLING_TYPES, LOCATION_TYPES, ROLE_TYPES } from "@/constants/enums";
 
@@ -23,7 +24,6 @@ export const roleType = pgEnum("role_types", ROLE_TYPES);
 export const profiles = pgTable("profiles", {
   id: uuid().primaryKey().defaultRandom().notNull(),
   clerk_id: text().notNull().unique(), // maps to Kinde user ID
-  name: text().notNull().default(""),
   role: roleType().notNull().default("user"),
   plan: planType().notNull().default("free"),
   billing_type: billingType(),
@@ -64,7 +64,7 @@ export const locations = pgTable("locations", {
     .notNull()
     .references(() => cities.id, { onDelete: "cascade" }),
   street: text(),
-  guide: text(),
+  guide: jsonb(),
   is_guide_premium: boolean().default(false),
   longitude: doublePrecision().notNull(),
   latitude: doublePrecision().notNull(),

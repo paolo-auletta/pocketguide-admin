@@ -40,7 +40,6 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       profilesData = await db
         .select({
           id: profiles.id,
-          name: profiles.name,
           clerk_id: profiles.clerk_id,
           role: profiles.role,
           plan: profiles.plan,

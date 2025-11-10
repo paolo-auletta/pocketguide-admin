@@ -90,7 +90,7 @@ export const LocationCreate = z.object({
   embedded_links: urlArray.default([]).optional(),
   city: uuid,
   street: z.string().optional(),
-  guide: z.string().optional(),
+  guide: z.record(z.string(), z.unknown()).nullable().optional(), // EditorJS JSONB data
   is_guide_premium: z.boolean().optional(),
   longitude: longitude,
   latitude: latitude,
@@ -110,7 +110,7 @@ export const LocationUpdate = atLeastOne({
   embedded_links: urlArray.optional(),
   city: uuid.optional(),
   street: z.string().optional(),
-  guide: z.string().optional(),
+  guide: z.record(z.string(), z.unknown()).nullable().optional(), // EditorJS JSONB data
   is_guide_premium: z.boolean().optional(),
   longitude: longitude.optional(),
   latitude: latitude.optional(),
