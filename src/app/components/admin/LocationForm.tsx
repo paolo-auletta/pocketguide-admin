@@ -68,6 +68,50 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
       console.log('Available cities:', cities.map(c => ({ id: c.id, name: c.name })));
       console.log('City ID from location:', cityId);
       
+      // Prepare initial guide value from existing data
+      let initialGuide: OutputData | null = null;
+      const rawGuide = (location as Record<string, unknown>).guide as unknown;
+      console.log('Raw guide from location:', rawGuide, 'Type:', typeof rawGuide);
+      if (rawGuide) {
+        if (typeof rawGuide === 'string') {
+          // If it is a JSON string, parse; otherwise wrap as paragraph
+          try {
+            const parsed = JSON.parse(rawGuide);
+            console.log('Parsed guide from string:', parsed);
+            if (parsed && typeof parsed === 'object' && Array.isArray(parsed.blocks)) {
+              initialGuide = parsed as OutputData;
+            } else {
+              initialGuide = {
+                time: Date.now(),
+                version: '2.31.0',
+                blocks: [
+                  {
+                    type: 'paragraph',
+                    data: { text: rawGuide },
+                  } as unknown as OutputData['blocks'][number],
+                ],
+              } as OutputData;
+            }
+          } catch {
+            console.log('Failed to parse guide as JSON, wrapping as paragraph');
+            initialGuide = {
+              time: Date.now(),
+              version: '2.31.0',
+              blocks: [
+                {
+                  type: 'paragraph',
+                  data: { text: rawGuide as string },
+                } as unknown as OutputData['blocks'][number],
+              ],
+            } as OutputData;
+          }
+        } else if (typeof rawGuide === 'object') {
+          console.log('Guide is already an object:', rawGuide);
+          initialGuide = rawGuide as OutputData;
+        }
+      }
+      console.log('Final initialGuide:', initialGuide);
+
       setFormData(prev => ({
         ...prev,
         name: (location.name as string) || '',
@@ -82,7 +126,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         embedded_links: (location.embedded_links as string[]) || [],
         city: cityId,
         street: (location.street as string) || '',
-        guide: (location.guide as OutputData) || null,
+        guide: initialGuide,
         is_guide_premium: (location.is_guide_premium as boolean) ?? false,
         longitude: (location.longitude as number) || 0,
         latitude: (location.latitude as number) || 0,
@@ -288,7 +332,6 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
       // Ensure we capture the latest editor state at submit time
       let latestGuide: OutputData | null = formData.guide;
       try {
-        // @ts-expect-error access forwarded ref
         const saved = await editorRef.current?.save();
         if (saved) latestGuide = saved;
       } catch (err) {

@@ -286,19 +286,23 @@ export default function AdminPage() {
               onCancel={() => setCreatingTable(null)}
             />
           )}
-          {editingRow?.table === 'locations' && tables && (
-            <LocationForm
-              location={editingRow.row}
-              cities={tables.cities.data.map((c) => ({ 
-                id: c.id as string, 
-                name: c.name as string,
-                center_latitude: c.center_latitude as number,
-                center_longitude: c.center_longitude as number,
-              }))}
-              onSuccess={handleFormSuccess}
-              onCancel={() => setEditingRow(null)}
-            />
-          )}
+          {editingRow?.table === 'locations' && tables && (() => {
+            console.log('Editing location row:', editingRow.row);
+            console.log('Location guide field:', editingRow.row.guide);
+            return (
+              <LocationForm
+                location={editingRow.row}
+                cities={tables.cities.data.map((c) => ({ 
+                  id: c.id as string, 
+                  name: c.name as string,
+                  center_latitude: c.center_latitude as number,
+                  center_longitude: c.center_longitude as number,
+                }))}
+                onSuccess={handleFormSuccess}
+                onCancel={() => setEditingRow(null)}
+              />
+            );
+          })()}
           {creatingTable === 'trips' && tables && (
             <TripForm
               cities={tables.cities.data.map((c) => ({ id: c.id as string, name: c.name as string }))}

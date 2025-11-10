@@ -28,6 +28,8 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
   const holderRef = useRef<HTMLDivElement>(null);
   const isInitializedRef = useRef(false);
   const isReadyRef = useRef(false);
+  const dataToRenderRef = useRef<OutputData | null | undefined>(data);
+  const userEditTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Expose save() to parent components
   useImperativeHandle(ref, () => ({
@@ -75,13 +77,22 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
       // Initialize Editor.js
       const editor = new EditorJS({
         holder: holderRef.current!,
-        data: data || undefined,
         readOnly,
         placeholder,
         minHeight: 200,
 
         onReady: () => {
+          console.log('Editor onReady fired, dataToRenderRef.current:', dataToRenderRef.current);
           isReadyRef.current = true;
+          // Render initial data if available
+          if (dataToRenderRef.current && Array.isArray((dataToRenderRef.current as any).blocks) && (dataToRenderRef.current as any).blocks.length > 0) {
+            console.log('Rendering data in onReady:', dataToRenderRef.current);
+            try {
+              editorRef.current?.render(dataToRenderRef.current);
+            } catch (e) {
+              console.error('Failed to render initial editor data:', e);
+            }
+          }
         },
         
         // Type cast tools to avoid TypeScript errors with EditorJS plugin types
@@ -93,7 +104,12 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
               levels: [1, 2, 3, 4],
               defaultLevel: 2,
             },
-            inlineToolbar: ['bold', 'link'],
+            shortcut: 'CMD+ALT+H',
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            toolbox: {
+              icon: '<svg class="icon icon--header"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-header"></use></svg>',
+              title: 'Heading',
+            } as any,
           },
           list: {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -102,6 +118,11 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
             config: {
               defaultStyle: 'unordered',
             },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            toolbox: {
+              icon: '<svg class="icon icon--list"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-list"></use></svg>',
+              title: 'List',
+            } as any,
           },
           paragraph: {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -122,6 +143,11 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
               field: 'url',
               types: 'image/*',
             },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            toolbox: {
+              icon: '<svg class="icon icon--image"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-image"></use></svg>',
+              title: 'Image',
+            } as any,
           },
           warning: {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,6 +157,11 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
               titlePlaceholder: 'Warning title',
               messagePlaceholder: 'Warning message',
             },
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            toolbox: {
+              icon: '<svg class="icon icon--warning"><use xmlns:xlink="http://www.w3.org/1999/xlink" xlink:href="#icon-warning"></use></svg>',
+              title: 'Warning',
+            } as any,
           },
         },
 
@@ -139,6 +170,12 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
             try {
               const outputData = await editorRef.current.save();
               onChange(outputData);
+              
+              // Ignore data changes for 500ms after user edit to prevent re-render
+              if (userEditTimeoutRef.current) clearTimeout(userEditTimeoutRef.current);
+              userEditTimeoutRef.current = setTimeout(() => {
+                userEditTimeoutRef.current = null;
+              }, 500);
             } catch (error) {
               console.error('Error saving editor data:', error);
             }
@@ -178,13 +215,65 @@ export const EditorComponent = forwardRef<EditorHandle, EditorComponentProps>(fu
 
   // Update data when prop changes (for editing existing content)
   useEffect(() => {
+    console.log('EditorComponent data prop changed:', data, 'isReady:', isReadyRef.current, 'editorRef exists:', !!editorRef.current, 'ignoreUpdates:', !!userEditTimeoutRef.current);
+    
+    // If user just edited, ignore this update (it's the echo from onChange)
+    if (userEditTimeoutRef.current) {
+      console.log('Skipping re-render because user is editing');
+      return;
+    }
+    
+    dataToRenderRef.current = data;
     if (editorRef.current && data && isReadyRef.current) {
-      editorRef.current.render(data);
+      console.log('Rendering data into editor:', data);
+      try {
+        editorRef.current.render(data);
+      } catch (e) {
+        console.error('Error rendering data:', e);
+      }
     }
   }, [data]);
 
   return (
-    <div className="border rounded-md">
+    <div className="border rounded-md overflow-hidden">
+      <style>{`
+        .ce-block__content {
+          max-width: 100%;
+        }
+        .ce-header {
+          font-weight: bold;
+          margin: 0.5em 0;
+          line-height: 1.2;
+        }
+        /* Target h1-h4 tags with ce-header class */
+        h1.ce-header {
+          font-size: 32px !important;
+          margin: 0 !important;
+        }
+        h2.ce-header {
+          font-size: 24px !important;
+          margin: 0 !important;
+        }
+        h3.ce-header {
+          font-size: 20px !important;
+          margin: 0 !important;
+        }
+        h4.ce-header {
+          font-size: 18px !important;
+          margin: 0 !important;
+        }
+        .ce-paragraph {
+          margin: 0.5em 0;
+          font-size: 16px;
+        }
+        .ce-list {
+          margin: 0.5em 0;
+          padding-left: 1.5em;
+        }
+        .ce-list__item {
+          margin: 0.25em 0;
+        }
+      `}</style>
       <div
         ref={holderRef}
         className="prose prose-sm max-w-none p-4"
