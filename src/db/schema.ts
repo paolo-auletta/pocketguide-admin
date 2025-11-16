@@ -10,7 +10,7 @@ import {
   primaryKey,
   uniqueIndex,
   index,
-  jsonb,
+  numeric,
 } from "drizzle-orm/pg-core";
 import { PLAN_TYPES, BILLING_TYPES, LOCATION_TYPES, ROLE_TYPES } from "@/constants/enums";
 
@@ -52,24 +52,32 @@ export const locations = pgTable("locations", {
   name: text().notNull(),
   description: text(),
 
-  priceLow: integer(),
-  priceHigh: integer(),
-  timeLow: integer(),
-  timeHigh: integer(),
-
   type: locationType().notNull(),
-  images: text().array(), // array of image URLs
+  images: text().array(), // array of image URLs or storage paths
   embedded_links: text().array(), // array of external links
   city: uuid()
     .notNull()
     .references(() => cities.id, { onDelete: "cascade" }),
   street: text(),
-  guide: jsonb(),
+  guide: text(),
   is_guide_premium: boolean().default(false),
   longitude: doublePrecision().notNull(),
   latitude: doublePrecision().notNull(),
   created_at: timestamp({ withTimezone: true }).defaultNow().notNull(),
   modified_at: timestamp({ withTimezone: true }).defaultNow().notNull(),
+
+  priceHigh: integer(),
+  timeLow: integer(),
+  timeHigh: integer(),
+  priceLow: integer(),
+  google_places_id: text(),
+  allow_getyourguide_search: boolean().default(true),
+  website: text(),
+  maps_url: text(),
+  price_level: integer(),
+  rating: numeric({ precision: 3, scale: 2, mode: 'number' }),
+  user_ratings_total: integer(),
+  google_photos: text().array(),
 }, (t) => ({
   cityIdx: index("locations_city_idx").on(t.city),
   typeIdx: index("locations_type_idx").on(t.type),

@@ -5,5 +5,5 @@ export const BILLING_TYPES: [string, ...string[]] = [
   "yearly",
   "lifetime",
 ]
-export const LOCATION_TYPES: [string, ...string[]] = ["art", "restaurant", "party"]
+export const LOCATION_TYPES: [string, ...string[]] = ["art", "restaurant", "club", "green"]
 export const ROLE_TYPES: [string, ...string[]] = ["user", "analyst", "admin"]

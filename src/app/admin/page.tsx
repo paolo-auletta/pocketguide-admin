@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ChangeEvent } from 'react';
 import { useAuth } from '@clerk/nextjs';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -8,6 +8,14 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Loader2, Plus, Edit2, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { CityForm } from '@/app/components/admin/CityForm';
 import { LocationForm } from '@/app/components/admin/LocationForm';
 import { TripForm } from '@/app/components/admin/TripForm';
@@ -33,6 +41,11 @@ interface SortState {
   direction: SortDirection;
 }
 
+interface FilterState {
+  column: string | null;
+  value: string;
+}
+
 export default function AdminPage() {
   const { userId, isLoaded } = useAuth();
   const [tables, setTables] = useState<Record<string, TableData> | null>(null);
@@ -42,6 +55,9 @@ export default function AdminPage() {
   const [creatingTable, setCreatingTable] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('cities');
   const [sortState, setSortState] = useState<Record<string, SortState>>({});
+  const [filters, setFilters] = useState<Record<string, FilterState>>({});
+  const [importing, setImporting] = useState<Record<string, boolean>>({});
+  const [importMessages, setImportMessages] = useState<Record<string, string | null>>({});
 
   const fetchTables = async () => {
     try {
@@ -181,6 +197,49 @@ export default function AdminPage() {
     });
   };
 
+  const getFilteredData = (data: Record<string, unknown>[], tableName: string) => {
+    const filter = filters[tableName];
+    if (!filter?.column || filter.value.trim() === '') return data;
+
+    const filterValueRaw = filter.value.trim();
+    const filterValue = filterValueRaw.toLowerCase();
+
+    return data.filter((row) => {
+      const value = row[filter.column!];
+
+      if (value === null || value === undefined) return false;
+
+      if (typeof value === 'boolean') {
+        if (filterValue === 'true' || filterValue === 'false') {
+          const boolFilter = filterValue === 'true';
+          return value === boolFilter;
+        }
+
+        if (['1', 'yes', 'y'].includes(filterValue)) return value === true;
+        if (['0', 'no', 'n'].includes(filterValue)) return value === false;
+        return false;
+      }
+
+      if (typeof value === 'number') {
+        const numFilter = Number(filterValueRaw);
+        if (!Number.isNaN(numFilter)) {
+          return value === numFilter;
+        }
+        return String(value).toLowerCase().includes(filterValue);
+      }
+
+      if (typeof value === 'string') {
+        return value.toLowerCase().includes(filterValue);
+      }
+
+      if (Array.isArray(value)) {
+        return value.some((item) => String(item).toLowerCase().includes(filterValue));
+      }
+
+      return String(value).toLowerCase().includes(filterValue);
+    });
+  };
+
   const getSortedData = (data: Record<string, unknown>[], tableName: string) => {
     const sort = sortState[tableName];
     if (!sort?.column || !sort?.direction) return data;
@@ -201,6 +260,56 @@ export default function AdminPage() {
     });
 
     return sorted;
+  };
+
+  const handleCsvFileChange = async (
+    event: ChangeEvent<HTMLInputElement>,
+    tableName: string
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setImportMessages((prev) => ({ ...prev, [tableName]: null }));
+    setImporting((prev) => ({ ...prev, [tableName]: true }));
+
+    try {
+      const text = await file.text();
+
+      const response = await fetch('/api/admin/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ table: tableName, csv: text }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || result.error) {
+        const message = result.error || 'Failed to import CSV';
+        setImportMessages((prev) => ({ ...prev, [tableName]: `Error: ${message}` }));
+      } else {
+        const data = result.data as { inserted: number; errors?: { row: number; message: string }[] };
+        if (data.errors && data.errors.length > 0) {
+          const first = data.errors[0];
+          setImportMessages((prev) => ({
+            ...prev,
+            [tableName]: `Imported ${data.inserted} rows. First error at row ${first.row}: ${first.message}`,
+          }));
+        } else {
+          setImportMessages((prev) => ({
+            ...prev,
+            [tableName]: `Successfully imported ${data.inserted} rows.`,
+          }));
+        }
+
+        await fetchTables();
+      }
+    } catch {
+      setImportMessages((prev) => ({ ...prev, [tableName]: 'Error: Failed to import CSV' }));
+    } finally {
+      setImporting((prev) => ({ ...prev, [tableName]: false }));
+      // Reset input so the same file can be selected again if needed
+      event.target.value = '';
+    }
   };
 
   if (!isLoaded) {
@@ -403,95 +512,173 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full gap-1 h-auto p-1 bg-muted" style={{ gridTemplateColumns: `repeat(auto-fit, minmax(100px, 1fr))` }}>
-                {tableEntries.filter(([key]) => key !== 'profiles').map(([key, table]) => (
-                  <TabsTrigger key={key} value={key} className="text-xs sm:text-sm whitespace-nowrap">
-                    {table.name}
-                  </TabsTrigger>
-                ))}
+              <TabsList
+                className="grid w-full gap-1 h-auto p-1 bg-muted"
+                style={{ gridTemplateColumns: `repeat(auto-fit, minmax(100px, 1fr))` }}
+              >
+                {tableEntries
+                  .filter(([key]) => key !== 'profiles')
+                  .map(([key, table]) => (
+                    <TabsTrigger key={key} value={key} className="text-xs sm:text-sm whitespace-nowrap">
+                      {table.name}
+                    </TabsTrigger>
+                  ))}
               </TabsList>
 
-              {tableEntries.filter(([key]) => key !== 'profiles').map(([key, table]) => (
-                <TabsContent key={key} value={key} className="space-y-4">
-                  <div className="flex justify-end">
-                    <Button
-                      onClick={() => setCreatingTable(key)}
-                      size="sm"
-                      className="gap-2"
-                    >
-                      <Plus className="h-4 w-4" />
-                      Add {table.name}
-                    </Button>
-                  </div>
+              {tableEntries
+                .filter(([key]) => key !== 'profiles')
+                .map(([key, table]) => {
+                  const filteredData = getFilteredData(table.data, key);
+                  const sortedData = getSortedData(filteredData, key);
 
-                  {table.data.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground">No records found</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            {Object.keys(table.data[0]).map((column) => {
-                              const sort = sortState[key];
-                              const isActive = sort?.column === column;
-                              return (
-                                <TableHead
-                                  key={column}
-                                  className="text-xs cursor-pointer hover:bg-muted/50 transition-colors"
-                                  onClick={() => handleColumnSort(key, column)}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <span>{column}</span>
-                                    {isActive && (
-                                      sort.direction === 'asc' ? (
-                                        <ArrowUp className="h-3 w-3" />
-                                      ) : (
-                                        <ArrowDown className="h-3 w-3" />
-                                      )
-                                    )}
-                                  </div>
-                                </TableHead>
-                              );
-                            })}
-                            <TableHead className="text-xs">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {getSortedData(table.data, key).map((row, rowIndex) => (
-                            <TableRow key={rowIndex}>
-                              {Object.entries(row).map(([column, value]) => (
-                                <TableCell key={`${rowIndex}-${column}`} className="text-xs">
-                                  {renderCellValue(value, column, tables)}
-                                </TableCell>
+                  return (
+                    <TabsContent key={key} value={key} className="space-y-4">
+                      <div className="flex justify-between">
+                        {table.data.length > 0 && (
+                          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-muted-foreground">Filter by</span>
+                              <Select
+                                value={filters[key]?.column || undefined}
+                                onValueChange={(column) =>
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    [key]: {
+                                      column,
+                                      value: prev[key]?.value ?? '',
+                                    },
+                                  }))
+                                }
+                              >
+                                <SelectTrigger className="h-8 w-40">
+                                  <SelectValue placeholder="Field" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Object.keys(table.data[0]).map((column) => (
+                                    <SelectItem key={column} value={column}>
+                                      {column}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                className="h-8 w-40"
+                                placeholder="Value (e.g. false)"
+                                value={filters[key]?.value ?? ''}
+                                onChange={(e) =>
+                                  setFilters((prev) => ({
+                                    ...prev,
+                                    [key]: {
+                                      column: prev[key]?.column ?? null,
+                                      value: e.target.value,
+                                    },
+                                  }))
+                                }
+                              />
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="ml-4"
+                              onClick={() =>
+                                setFilters((prev) => ({
+                                  ...prev,
+                                  [key]: { column: null, value: '' },
+                                }))
+                              }
+                              disabled={!filters[key]?.column && !filters[key]?.value}
+                            >
+                              Clear
+                            </Button>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="file"
+                            accept=".csv"
+                            className="text-xs max-w-[180px]"
+                            onChange={(e) => handleCsvFileChange(e, key)}
+                            disabled={importing[key]}
+                          />
+                          <Button onClick={() => setCreatingTable(key)} size="sm" className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Add {table.name}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {importMessages[key] && (
+                        <p className="text-xs text-muted-foreground">{importMessages[key]}</p>
+                      )}
+
+                      {filteredData.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground">No records found</p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                {Object.keys(table.data[0]).map((column) => {
+                                  const sort = sortState[key];
+                                  const isActive = sort?.column === column;
+                                  return (
+                                    <TableHead
+                                      key={column}
+                                      className="text-xs cursor-pointer hover:bg-muted/50 transition-colors"
+                                      onClick={() => handleColumnSort(key, column)}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span>{column}</span>
+                                        {isActive &&
+                                          (sort.direction === 'asc' ? (
+                                            <ArrowUp className="h-3 w-3" />
+                                          ) : (
+                                            <ArrowDown className="h-3 w-3" />
+                                          ))}
+                                      </div>
+                                    </TableHead>
+                                  );
+                                })}
+                                <TableHead className="text-xs">Actions</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {sortedData.map((row, rowIndex) => (
+                                <TableRow key={rowIndex}>
+                                  {Object.entries(row).map(([column, value]) => (
+                                    <TableCell key={`${rowIndex}-${column}`} className="text-xs">
+                                      {renderCellValue(value, column, tables)}
+                                    </TableCell>
+                                  ))}
+                                  <TableCell className="text-xs space-x-2 flex">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditingRow({ table: key, row })}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Edit2 className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => handleDelete(key, row)}
+                                      className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
                               ))}
-                              <TableCell className="text-xs space-x-2 flex">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => setEditingRow({ table: key, row })}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleDelete(key, row)}
-                                  className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-                </TabsContent>
-              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      )}
+                    </TabsContent>
+                  );
+                })}
             </Tabs>
           </CardContent>
         </Card>

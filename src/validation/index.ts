@@ -90,10 +90,18 @@ export const LocationCreate = z.object({
   embedded_links: urlArray.default([]).optional(),
   city: uuid,
   street: z.string().optional(),
-  guide: z.record(z.string(), z.unknown()).nullable().optional(), // EditorJS JSONB data
+  guide: z.union([z.string(), z.record(z.string(), z.unknown())]).nullable().optional(), // JSON string or object, stored as text
   is_guide_premium: z.boolean().optional(),
   longitude: longitude,
   latitude: latitude,
+  google_places_id: z.string().optional(),
+  allow_getyourguide_search: z.boolean().optional(),
+  website: z.string().url().optional(),
+  maps_url: z.string().url().optional(),
+  price_level: z.number().int().nullable().optional(),
+  rating: z.number().nullable().optional(),
+  user_ratings_total: z.number().int().nullable().optional(),
+  google_photos: stringArray.default([]).optional(),
 });
 
 // UPDATE
@@ -110,10 +118,18 @@ export const LocationUpdate = atLeastOne({
   embedded_links: urlArray.optional(),
   city: uuid.optional(),
   street: z.string().optional(),
-  guide: z.record(z.string(), z.unknown()).nullable().optional(), // EditorJS JSONB data
+  guide: z.union([z.string(), z.record(z.string(), z.unknown())]).nullable().optional(), // JSON string or object, stored as text
   is_guide_premium: z.boolean().optional(),
   longitude: longitude.optional(),
   latitude: latitude.optional(),
+  google_places_id: z.string().optional(),
+  allow_getyourguide_search: z.boolean().optional(),
+  website: z.string().url().optional(),
+  maps_url: z.string().url().optional(),
+  price_level: z.number().int().nullable().optional(),
+  rating: z.number().nullable().optional(),
+  user_ratings_total: z.number().int().nullable().optional(),
+  google_photos: stringArray.optional(),
 });
 export type LocationCreateInput = z.infer<typeof LocationCreate>;
 export type LocationUpdateInput = z.infer<typeof LocationUpdate>;
