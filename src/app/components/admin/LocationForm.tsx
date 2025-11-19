@@ -45,6 +45,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     is_guide_premium: false,
     longitude: 0,
     latitude: 0,
+    google_places_id: '',
   });
   const editorRef = useRef<EditorHandle | null>(null);
 
@@ -60,6 +61,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     return location?.id || `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   });
   const [deletingImage, setDeletingImage] = useState(false);
+  const [autoSettingPlaceId, setAutoSettingPlaceId] = useState(false);
 
   useEffect(() => {
     if (location && cities.length > 0) {
@@ -121,7 +123,10 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         priceHigh: (location.priceHigh as number | null) || null,
         timeLow: (location.timeLow as number | null) || null,
         timeHigh: (location.timeHigh as number | null) || null,
-        type: (location.type as string) || LOCATION_TYPES[0],
+        type: (() => {
+          const rawType = (location.type as string) || '';
+          return LOCATION_TYPES.includes(rawType) ? rawType : LOCATION_TYPES[0];
+        })(),
         images: (location.images as string[]) || [],
         embedded_links: (location.embedded_links as string[]) || [],
         city: cityId,
@@ -130,6 +135,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         is_guide_premium: (location.is_guide_premium as boolean) ?? false,
         longitude: (location.longitude as number) || 0,
         latitude: (location.latitude as number) || 0,
+        google_places_id: (location.google_places_id as string) || '',
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -161,6 +167,48 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
       generateSignedUrls();
     }
   }, [formData.images]);
+
+  const handleAutoSetPlaceId = async () => {
+    setError(null);
+
+    if (!formData.name.trim() || !formData.city) {
+      setError('Name and city are required to auto-set Google Place ID');
+      return;
+    }
+
+    setAutoSettingPlaceId(true);
+    try {
+      const response = await fetch('/api/admin/locations/place-id', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: formData.name, cityId: formData.city }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || data.error) {
+        const message = data.error || 'Failed to auto-set Google Place ID';
+        setError(message);
+        return;
+      }
+
+      const placeId = data.data?.placeId as string | null | undefined;
+      if (!placeId) {
+        setError('No Google Place ID found for this location');
+        return;
+      }
+
+      setFormData((prev) => ({ ...prev, google_places_id: placeId }));
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to auto-set Google Place ID'
+      );
+    } finally {
+      setAutoSettingPlaceId(false);
+    }
+  };
 
   const handleAddImage = () => {
     if (newImage.trim()) {
@@ -447,7 +495,11 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
 
           <div className="space-y-2">
             <Label htmlFor="type">Type *</Label>
-            <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+            <Select
+              key={`type-${formData.type}`}
+              value={formData.type}
+              onValueChange={(value) => setFormData({ ...formData, type: value })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -574,6 +626,35 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
               placeholder="0"
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="google_places_id">Google Place ID</Label>
+            <div className="flex gap-2">
+              <Input
+                id="google_places_id"
+                value={formData.google_places_id}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setFormData({ ...formData, google_places_id: e.target.value })
+                }
+                placeholder="Optional: paste Google Place ID or use Auto-Set"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAutoSetPlaceId}
+                disabled={autoSettingPlaceId}
+              >
+                {autoSettingPlaceId ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Auto-Setting...
+                  </>
+                ) : (
+                  'Auto-Set'
+                )}
+              </Button>
+            </div>
           </div>
 
           <div className="space-y-2">

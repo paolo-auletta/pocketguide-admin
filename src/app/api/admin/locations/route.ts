@@ -1,67 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import db from '@/db';
-import { locations, cities } from '@/db/schema';
+import { locations } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { LocationCreate, LocationUpdate, LocationCreateInput, LocationUpdateInput } from '@/validation';
 import { requireAdmin, ApiResponse } from '@/lib/admin-auth';
-
-async function fetchGooglePlaceId(query: string): Promise<string | null> {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
-  if (!apiKey) {
-    console.warn('GOOGLE_MAPS_API_KEY not set, skipping Google Places lookup');
-    return null;
-  }
-
-  const url = new URL('https://maps.googleapis.com/maps/api/place/findplacefromtext/json');
-  url.searchParams.set('input', query);
-  url.searchParams.set('inputtype', 'textquery');
-  url.searchParams.set('fields', 'place_id');
-  url.searchParams.set('key', apiKey);
-
-  try {
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-      console.error('Google Places API error status:', res.status, await res.text());
-      return null;
-    }
-
-    const data = await res.json();
-    if (Array.isArray(data.candidates) && data.candidates.length > 0 && data.candidates[0].place_id) {
-      return data.candidates[0].place_id as string;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('Google Places API request failed:', error);
-    return null;
-  }
-}
-
-async function updateGooglePlacesIdForLocation(locationId: string, name: string, cityId: string) {
-  try {
-    const cityRows = await db
-      .select({ name: cities.name, country: cities.country })
-      .from(cities)
-      .where(eq(cities.id, cityId))
-      .limit(1);
-
-    const city = cityRows[0];
-    const parts = [name];
-    if (city?.name) parts.push(city.name);
-    if (city?.country) parts.push(city.country);
-    const query = parts.join(', ');
-
-    const placeId = await fetchGooglePlaceId(query);
-    if (!placeId) return;
-
-    await db
-      .update(locations)
-      .set({ google_places_id: placeId })
-      .where(eq(locations.id, locationId));
-  } catch (error) {
-    console.error('Failed to update google_places_id for location', locationId, error);
-  }
-}
 
 export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>> {
   const adminCheck = await requireAdmin();
@@ -132,8 +74,7 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
       );
     }
 
-    const created = result[0] as { id: string; name: string; city: string };
-    await updateGooglePlacesIdForLocation(created.id, created.name, created.city);
+    const created = result[0];
 
     return NextResponse.json({ data: created }, { status: 201 });
   } catch (error) {
@@ -255,8 +196,7 @@ export async function PUT(req: NextRequest): Promise<NextResponse<ApiResponse>> 
       );
     }
 
-    const updated = result[0] as { id: string; name: string; city: string };
-    await updateGooglePlacesIdForLocation(updated.id, updated.name, updated.city);
+    const updated = result[0];
 
     return NextResponse.json({ data: updated });
   } catch (error) {
