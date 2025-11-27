@@ -46,6 +46,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     longitude: 0,
     latitude: 0,
     google_places_id: '',
+    allow_getyourguide_search: true,
   });
   const editorRef = useRef<EditorHandle | null>(null);
 
@@ -136,6 +137,8 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         longitude: (location.longitude as number) || 0,
         latitude: (location.latitude as number) || 0,
         google_places_id: (location.google_places_id as string) || '',
+        allow_getyourguide_search:
+          (location.allow_getyourguide_search as boolean) ?? true,
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -696,6 +699,25 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
             />
             <Label htmlFor="is_guide_premium" className="font-normal cursor-pointer">
               Is Guide Premium
+            </Label>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="allow_getyourguide_search"
+              checked={formData.allow_getyourguide_search}
+              onCheckedChange={(checked: boolean | 'indeterminate') =>
+                setFormData({
+                  ...formData,
+                  allow_getyourguide_search: checked === true,
+                })
+              }
+            />
+            <Label
+              htmlFor="allow_getyourguide_search"
+              className="font-normal cursor-pointer"
+            >
+              Allow GetYourGuide search
             </Label>
           </div>
 
