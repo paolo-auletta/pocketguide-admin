@@ -47,6 +47,12 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     latitude: 0,
     google_places_id: '',
     allow_getyourguide_search: true,
+    website: '',
+    maps_url: '',
+    price_level: null as number | null,
+    rating: null as number | null,
+    user_ratings_total: null as number | null,
+    google_photos: [] as string[],
   });
   const editorRef = useRef<EditorHandle | null>(null);
 
@@ -139,6 +145,12 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
         google_places_id: (location.google_places_id as string) || '',
         allow_getyourguide_search:
           (location.allow_getyourguide_search as boolean) ?? true,
+        website: (location.website as string) || '',
+        maps_url: (location.maps_url as string) || '',
+        price_level: (location.price_level as number | null) ?? null,
+        rating: (location.rating as number | null) ?? null,
+        user_ratings_total: (location.user_ratings_total as number | null) ?? null,
+        google_photos: (location.google_photos as string[]) || [],
       }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -175,7 +187,7 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
     setError(null);
 
     if (!formData.name.trim() || !formData.city) {
-      setError('Name and city are required to auto-set Google Place ID');
+      setError('Name and city are required to auto-set Google Place data');
       return;
     }
 
@@ -190,18 +202,35 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
       const data = await response.json();
 
       if (!response.ok || data.error) {
-        const message = data.error || 'Failed to auto-set Google Place ID';
+        const message = data.error || 'Failed to auto-set Google Place data';
         setError(message);
         return;
       }
 
       const placeId = data.data?.placeId as string | null | undefined;
+      const mapsUrl = data.data?.mapsUrl as string | null | undefined;
+      const priceLevel = data.data?.priceLevel as number | null | undefined;
+      const rating = data.data?.rating as number | null | undefined;
+      const userRatingsTotal = data.data?.userRatingsTotal as number | null | undefined;
+      const website = data.data?.website as string | null | undefined;
+      const photos = (data.data?.photos as string[] | null | undefined) || [];
+
       if (!placeId) {
         setError('No Google Place ID found for this location');
         return;
       }
 
-      setFormData((prev) => ({ ...prev, google_places_id: placeId }));
+      setFormData((prev) => ({
+        ...prev,
+        google_places_id: placeId,
+        maps_url: mapsUrl || prev.maps_url,
+        price_level: typeof priceLevel === 'number' ? priceLevel : prev.price_level,
+        rating: typeof rating === 'number' ? rating : prev.rating,
+        user_ratings_total:
+          typeof userRatingsTotal === 'number' ? userRatingsTotal : prev.user_ratings_total,
+        website: website || prev.website,
+        google_photos: photos.length > 0 ? photos : prev.google_photos,
+      }));
     } catch (err) {
       setError(
         err instanceof Error
@@ -632,16 +661,8 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="google_places_id">Google Place ID</Label>
-            <div className="flex gap-2">
-              <Input
-                id="google_places_id"
-                value={formData.google_places_id}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                  setFormData({ ...formData, google_places_id: e.target.value })
-                }
-                placeholder="Optional: paste Google Place ID or use Auto-Set"
-              />
+            <div className="flex items-center justify-between">
+              <Label className="font-semibold">Google Place Data</Label>
               <Button
                 type="button"
                 variant="outline"
@@ -657,6 +678,104 @@ export function LocationForm({ location, cities, onSuccess, onCancel }: Location
                   'Auto-Set'
                 )}
               </Button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="google_places_id">Google Place ID</Label>
+                <Input
+                  id="google_places_id"
+                  value={formData.google_places_id}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, google_places_id: e.target.value })
+                  }
+                  placeholder="Paste Google Place ID or use Auto-Set"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="website">Website</Label>
+                <Input
+                  id="website"
+                  value={formData.website}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, website: e.target.value })
+                  }
+                  placeholder="Official website URL"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="maps_url">Google Maps URL</Label>
+                <Input
+                  id="maps_url"
+                  value={formData.maps_url}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({ ...formData, maps_url: e.target.value })
+                  }
+                  placeholder="Google Maps place URL"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="price_level">Price Level (0-4)</Label>
+                <Input
+                  id="price_level"
+                  type="number"
+                  min={0}
+                  max={4}
+                  value={formData.price_level ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({
+                      ...formData,
+                      price_level: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
+                  placeholder="Google price level"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="rating">Rating</Label>
+                <Input
+                  id="rating"
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  max={5}
+                  value={formData.rating ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({
+                      ...formData,
+                      rating: e.target.value ? parseFloat(e.target.value) : null,
+                    })
+                  }
+                  placeholder="Average rating"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="user_ratings_total">User Ratings Total</Label>
+                <Input
+                  id="user_ratings_total"
+                  type="number"
+                  min={0}
+                  value={formData.user_ratings_total ?? ''}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                    setFormData({
+                      ...formData,
+                      user_ratings_total: e.target.value ? parseInt(e.target.value) : null,
+                    })
+                  }
+                  placeholder="Total number of ratings"
+                />
+              </div>
+
+              <div className="space-y-1 text-xs text-muted-foreground md:col-span-2">
+                <span>
+                  Google photos linked: {formData.google_photos.length}
+                </span>
+              </div>
             </div>
           </div>
 

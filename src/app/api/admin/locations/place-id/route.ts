@@ -36,6 +36,70 @@ async function fetchGooglePlaceId(query: string): Promise<string | null> {
   }
 }
 
+interface GooglePlaceDetails {
+  mapsUrl: string | null;
+  priceLevel: number | null;
+  rating: number | null;
+  userRatingsTotal: number | null;
+  website: string | null;
+  photos: string[];
+}
+
+async function fetchGooglePlaceDetails(placeId: string): Promise<GooglePlaceDetails | null> {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  if (!apiKey) {
+    console.warn('GOOGLE_MAPS_API_KEY not set, skipping Google Place details lookup');
+    return null;
+  }
+
+  const url = new URL('https://maps.googleapis.com/maps/api/place/details/json');
+  url.searchParams.set('place_id', placeId);
+  url.searchParams.set('fields', 'url,website,price_level,rating,user_ratings_total,photos');
+  url.searchParams.set('key', apiKey);
+
+  try {
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      console.error('Google Place Details API error status:', res.status, await res.text());
+      return null;
+    }
+
+    const data = await res.json();
+    if (!data || data.status !== 'OK' || !data.result) {
+      console.warn('Google Place Details API returned non-OK status:', data?.status);
+      return null;
+    }
+
+    const result = data.result as {
+      url?: unknown;
+      website?: unknown;
+      price_level?: unknown;
+      rating?: unknown;
+      user_ratings_total?: unknown;
+      photos?: Array<{ photo_reference?: unknown }>;
+    };
+
+    const photos: string[] = Array.isArray(result.photos)
+      ? result.photos
+          .map((p) => (typeof p.photo_reference === 'string' ? p.photo_reference : null))
+          .filter((p): p is string => p !== null)
+      : [];
+
+    return {
+      mapsUrl: typeof result.url === 'string' ? result.url : null,
+      priceLevel: typeof result.price_level === 'number' ? result.price_level : null,
+      rating: typeof result.rating === 'number' ? result.rating : null,
+      userRatingsTotal:
+        typeof result.user_ratings_total === 'number' ? result.user_ratings_total : null,
+      website: typeof result.website === 'string' ? result.website : null,
+      photos,
+    };
+  } catch (error) {
+    console.error('Google Place Details API request failed:', error);
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>> {
   const adminCheck = await requireAdmin();
   if (adminCheck.error) {
@@ -81,8 +145,23 @@ export async function POST(req: NextRequest): Promise<NextResponse<ApiResponse>>
     const query = parts.join(', ');
 
     const placeId = await fetchGooglePlaceId(query);
+    let details: GooglePlaceDetails | null = null;
 
-    return NextResponse.json({ data: { placeId } });
+    if (placeId) {
+      details = await fetchGooglePlaceDetails(placeId);
+    }
+
+    return NextResponse.json({
+      data: {
+        placeId,
+        mapsUrl: details?.mapsUrl ?? null,
+        priceLevel: details?.priceLevel ?? null,
+        rating: details?.rating ?? null,
+        userRatingsTotal: details?.userRatingsTotal ?? null,
+        website: details?.website ?? null,
+        photos: details?.photos ?? [],
+      },
+    });
   } catch (error) {
     console.error('Error fetching Google Place ID:', error);
     return NextResponse.json(
